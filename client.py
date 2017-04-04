@@ -1,6 +1,8 @@
 import sys
 import threading
 
+# import fron chunks, maps, clientchunkpool
+
 class Client():
 	def __init__(self, address):
 		self.address = address
