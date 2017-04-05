@@ -38,19 +38,16 @@ class Map():
 			self.cursorx - chunkx(self.worldx)*CHUNK_WIDTH
 		)
 		
-		#sys.stderr.write("{} {} 0 0 {} {} | {} {}\n".format(inchunky(self.worldy), inchunkx(self.worldx), self.height, self.width, self.py, self.px))
 		self._pad.noutrefresh(inchunky(self.worldy), inchunkx(self.worldx), 0, 0, self.height-1, self.width-1)
-		#self._pad.noutrefresh(0, 0, 0, 0, 10, 10)
 	
 	def draw_empty_to(self, x, y):
-		if False and curses.has_colors():
-			curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
+		if curses.has_colors():
+			curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_WHITE)
 			for dy in range(CHUNK_HEIGHT):
 				self._pad.addstr(y+dy, x, " "*CHUNK_WIDTH, curses.color_pair(1))
 		else:
 			for dy in range(CHUNK_HEIGHT):
 				s = "."*(CHUNK_WIDTH)
-				#sys.stderr.write("Writing {!r} at {} {} ownsize {} {}\n".format(s, x, y+dy, self.px, self.py))
 				self._pad.addstr(y+dy, x, s)
 	
 	def resize(self, width, height):
