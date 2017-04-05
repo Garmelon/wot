@@ -1,3 +1,5 @@
+import threading
+
 class ChunkDiff():
 	"""
 	Represents differences between two chunks (changes to be made to a chunk).
@@ -24,4 +26,18 @@ class ChunkPool():
 	Load chunks it doesn't know.
 	"""
 	
-	pass
+	def __init__(self):
+		self._lock = threading.RLock()
+	
+	def __enter__(self):
+		self._lock.acquire()
+		return self
+	
+	def __exit__(self, type, value, tb):
+		self._lock.release()
+	
+	def load_list(self, coords):
+		pass
+	
+	def get(self, x, y):
+		pass
