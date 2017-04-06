@@ -1,4 +1,5 @@
 import curses
+import string
 import sys
 import threading
 from maps import Map
@@ -60,6 +61,9 @@ class Client():
 			elif i == "kDN5":  self.map_.scroll(0, 10)
 			elif i == "kLFT5": self.map_.scroll(-20, 0)
 			elif i == "kRIT5": self.map_.scroll(20, 0)
+			# edit world
+			elif i in string.digits + string.ascii_letters + string.punctuation + " ":
+				self.map_.write(i)
 			
 			else: sys.stdout.write(repr(i) + "\n")
 	

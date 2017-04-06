@@ -43,7 +43,7 @@ class Map():
 		with self.chunkpool as pool:
 			for x in range(chunkx(self.width) + 2):      # +2, not +1, or there will be empty gaps
 				for y in range(chunky(self.height) + 2): # in the bottom and right borders
-					chunk = pool.get(x+chunkx(self.worldx), y+chunky(self.worldy))
+					chunk = pool.get(Position(x+chunkx(self.worldx), y+chunky(self.worldy)))
 					if chunk:
 						chunk.draw_to(x*CHUNK_WIDTH, y*CHUNK_HEIGHT, self._pad)
 					else:
@@ -97,13 +97,21 @@ class Map():
 	
 	def write(self, char):
 		with self.chunkpool as pool:
-			chunk = pool.get(chunkx(self.cursorx), chunky(self.cursory))
+			chunk = pool.get(Position(chunkx(self.cursorx), chunky(self.cursory)))
 			if not chunk:
-				chunk = pool.create(chunkx(self.cursorx), chunky(self.cursory))
+				chunk = pool.create(Position(chunkx(self.cursorx), chunky(self.cursory)))
 			
-			chunk.setch(inchunkx(self.cursorx), inchunky(self.cursory), char)
+			chunk.set(inchunkx(self.cursorx), inchunky(self.cursory), char)
 		
 		self.move_cursor(1, 0)
+	
+	def delete(self):
+		with self.chunkpool as pool:
+			chunk = pool.get(Position(chunkx(self.cursorx-1), chunky(self.cursory)))
+			if chunk:
+				chunk.delete(inchunkx(self.cursorx-1), inchunky(self.cursory), char)
+			
+		self.move_cursor(-1, 0)
 	
 	def move_cursor(self, dx, dy):
 		self.cursorx += dx
