@@ -8,7 +8,10 @@ from chunks import ChunkPool
 
 class Client():
 	def __init__(self, address):
+		self.stopping = False
+		
 		self.address = address
+		self.drawevent = threading.Event()
 		self.pool = ChunkPool()
 		#self.map_ = Map(sizex, sizey, self.pool)
 		#self.chunkmap = Chunkmap(sizex, sizey, self.pool) # size changeable by +/-?
@@ -17,25 +20,51 @@ class Client():
 	
 	def launch(self, stdscr):
 		sizey, sizex = stdscr.getmaxyx()
-		self.map_ = Map(sizex, sizey, self.pool)
+		self.map_ = Map(sizex, sizey, self.pool, self.drawevent)
 		
-		stdscr.noutrefresh()
-		self.map_.draw()
-		curses.doupdate()
-		stdscr.getkey()
-		self.map_.worldx += 1
-		self.map_.cursorx += 2
-		self.map_.cursory += 1
-		stdscr.noutrefresh()
-		self.map_.draw()
-		curses.doupdate()
-		stdscr.getkey()
+		# start input thread
+		self.inputthread = threading.Thread(
+			target=self.input_thread,
+			name="inputthread",
+			args=(stdscr,),
+			daemon=True
+		)
+		self.inputthread.start()
+		
+		while not self.stopping:
+			self.drawevent.wait()
+			stdscr.noutrefresh()
+			with self.map_ as m:
+				m.draw()
+			curses.doupdate()
+			self.drawevent.clear()
 	
-	def get_input(self, scr):
-		pass
+	def input_thread(self, scr):
+		while True:
+			i = scr.getkey()
+			
+			if i == "q": self.stop()
+			# normal cursor movement
+			elif i == "KEY_UP":     self.map_.move_cursor(0, -1)
+			elif i == "KEY_DOWN":   self.map_.move_cursor(0, 1)
+			elif i == "KEY_LEFT":   self.map_.move_cursor(-1, 0)
+			elif i == "KEY_RIGHT":  self.map_.move_cursor(1, 0)
+			# quick cursor movement (5 vertical, 10 horizontal)
+			elif i == "KEY_SR":     self.map_.move_cursor(0, -5)
+			elif i == "KEY_SF":     self.map_.move_cursor(0, 5)
+			elif i == "KEY_SLEFT":  self.map_.move_cursor(-10, 0)
+			elif i == "KEY_SRIGHT": self.map_.move_cursor(10, 0)
+			# scrolling the map (10 vertical, 20 horizontal)
+			elif i == "kUP5": self.map_.scroll(0, -10)
+			elif i == "kDN5": self.map_.scroll(0, 10)
+			elif i == "kLFT5": self.map_.scroll(-20, 0)
+			elif i == "kRIT5": self.map_.scroll(20, 0)
+			
+			else: sys.stdout.write(repr(i) + "\n")
 	
 	def stop(self):
-		pass
+		self.stopping = True
+		self.drawevent.set()
 
 def main(argv):
 	if len(argv) != 2:
