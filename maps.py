@@ -14,12 +14,12 @@ class Map():
 	def __init__(self, width, height, chunkpool, drawevent):
 		self._lock = threading.RLock()
 		
-		self.worldx = 0
-		self.worldy = 0
-		self.cursorx = 0
-		self.cursory = 0
 		self.chunkpreload = 0
 		self.cursorpadding = 2
+		self.worldx = 0
+		self.worldy = 0
+		self.cursorx = self.cursorpadding
+		self.cursory = self.cursorpadding
 		
 		self.chunkpool = chunkpool
 		self.drawevent = drawevent
@@ -67,6 +67,12 @@ class Map():
 				s = "."*CHUNK_WIDTH
 				self._pad.addstr(y+dy, x, s)
 	
+	def load_visible(self):
+		with self.chunkpool as pool:
+			pool.load_list(self.visible_chunk_coords())
+		
+		self.drawevent.set()
+	
 	def resize(self, width, height):
 		self.width = width
 		self.height = height
@@ -76,18 +82,15 @@ class Map():
 			(chunkx(width) + 2)*CHUNK_WIDTH + 1 # workaround for addwstr issue when drawing
 		)
 		
-		with self.chunkpool as pool:
-			pool.load_list(self.visible_chunk_coords())
-		
-		self.drawevent.set()
+		self.load_visible()
 	
 	def visible_chunk_coords(self):
 		coords = []
 		
 		xstart = chunkx(self.worldx) - self.chunkpreload
 		ystart = chunky(self.worldy) - self.chunkpreload
-		xend = xstart + chunkx(self.width) + 1 + 2*self.chunkpreload
-		yend = ystart + chunky(self.height) + 1 + 2*self.chunkpreload
+		xend = xstart + chunkx(self.width)+2 + 2*self.chunkpreload
+		yend = ystart + chunky(self.height)+2 + 2*self.chunkpreload
 		
 		for x in range(xstart, xend):
 			for y in range(ystart, yend):
@@ -109,7 +112,7 @@ class Map():
 		with self.chunkpool as pool:
 			chunk = pool.get(Position(chunkx(self.cursorx-1), chunky(self.cursory)))
 			if chunk:
-				chunk.delete(inchunkx(self.cursorx-1), inchunky(self.cursory), char)
+				chunk.delete(inchunkx(self.cursorx-1), inchunky(self.cursory))
 			
 		self.move_cursor(-1, 0)
 	
@@ -133,7 +136,7 @@ class Map():
 			)
 		)
 		
-		self.drawevent.set()
+		self.load_visible()
 	
 	def scroll(self, dx, dy):
 		self.worldx += dx
@@ -161,7 +164,7 @@ class Map():
 			#)
 		#)
 		
-		self.drawevent.set()
+		self.load_visible()
 	
 
 class ChunkMap():

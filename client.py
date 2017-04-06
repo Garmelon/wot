@@ -64,6 +64,7 @@ class Client():
 			# edit world
 			elif i in string.digits + string.ascii_letters + string.punctuation + " ":
 				self.map_.write(i)
+			elif i == "\x7f": self.map_.delete()
 			
 			else: sys.stdout.write(repr(i) + "\n")
 	

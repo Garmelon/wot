@@ -43,7 +43,9 @@ class ChunkDiff():
 		self._chars[x+y*CHUNK_WIDTH] = character
 	
 	def delete(self, x, y):
-		del self._chars[x+y*CHUNK_WIDTH]
+		pos = x + y*CHUNK_WIDTH
+		if pos in self._chars:
+			del self._chars[x+y*CHUNK_WIDTH]
 	
 	def apply(self, diff):
 		for i, c in diff._chars.items():
