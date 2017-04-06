@@ -10,13 +10,6 @@ class ChunkDiff():
 	Todo: Implement delete diff
 	"""
 	
-	@classmethod
-	def combine(cls, diff_a, diff_b):
-		diff = cls()
-		diff.apply(diff_a)
-		diff.apply(diff_b)
-		return diff
-	
 	def __init__(self):
 		self._chars = {}
 	
@@ -26,6 +19,12 @@ class ChunkDiff():
 		diff._chars = d
 		return diff
 		#self._chars = d.copy()
+	
+	@classmethod
+	def from_string(cls, s):
+		diff = cls()
+		#for c in string
+		pass
 	
 	def copy(self):
 		return ChunkDiff.from_dict(self.to_dict().copy())
@@ -40,12 +39,14 @@ class ChunkDiff():
 		#return self._chars.copy()
 	
 	def set(self, x, y, character):
-		self._chars[x+y*CHUNK_WIDTH] = character
+		pos = x+y*CHUNK_WIDTH
+		self._chars[pos] = character
 	
 	def delete(self, x, y):
-		pos = x + y*CHUNK_WIDTH
-		if pos in self._chars:
-			del self._chars[x+y*CHUNK_WIDTH]
+		self.set(x, y, " ")
+	
+	def clear_deletions(self):
+		self._chars = {i: v for i, v in self._chars.items() if v != " "}
 	
 	def apply(self, diff):
 		for i, c in diff._chars.items():
@@ -55,6 +56,9 @@ class ChunkDiff():
 		d = self._chars
 		s = "".join(d.get(i, " ") for i in range(CHUNK_WIDTH*CHUNK_HEIGHT))
 		return [s[i:i+CHUNK_WIDTH] for i in range(0, CHUNK_WIDTH*CHUNK_HEIGHT, CHUNK_WIDTH)]
+	
+	def empty(self):
+		return bool(self._chars)
 	
 
 class Chunk():
@@ -74,13 +78,17 @@ class Chunk():
 	
 	def set(self, x, y, character):
 		self._modifications.set(x, y, character)
+		self.touch()
 	
 	def delete(self, x, y):
 		self._modifications.delete(x, y)
+		self.touch()
 	
 	def commit_changes(self):
 		self._content.apply(self._modifications)
+		self._content.clear_deletions()
 		self._modifications = ChunkDiff()
+		self.touch()
 	
 	def drop_changes(self):
 		self._modifications = ChunkDiff()
@@ -95,6 +103,12 @@ class Chunk():
 		for line in self._content.combine(self._modifications).lines():
 			window.addstr(y, x, line)
 			y += 1
+	
+	def modified(self):
+		return not self._modifications.empty()
+	
+	def empty(self):
+		return self._content.empty() and self._modifications.empty()
 
 class ChunkPool():
 	"""

@@ -20,6 +20,8 @@ class Map():
 		self.worldy = 0
 		self.cursorx = self.cursorpadding
 		self.cursory = self.cursorpadding
+		self.lastcurx = self.cursorx
+		self.lastcury = self.cursory
 		
 		self.chunkpool = chunkpool
 		self.drawevent = drawevent
@@ -106,7 +108,7 @@ class Map():
 			
 			chunk.set(inchunkx(self.cursorx), inchunky(self.cursory), char)
 		
-		self.move_cursor(1, 0)
+		self.move_cursor(1, 0, False)
 	
 	def delete(self):
 		with self.chunkpool as pool:
@@ -114,11 +116,18 @@ class Map():
 			if chunk:
 				chunk.delete(inchunkx(self.cursorx-1), inchunky(self.cursory))
 			
-		self.move_cursor(-1, 0)
+		self.move_cursor(-1, 0, False)
 	
-	def move_cursor(self, dx, dy):
-		self.cursorx += dx
-		self.cursory += dy
+	def newline(self):
+		self.set_cursor(self.lastcurx, self.lastcury+1)
+	
+	def set_cursor(self, x, y, explicit=True):
+		self.cursorx = x
+		self.cursory = y
+		
+		if explicit:
+			self.lastcurx = self.cursorx
+			self.lastcury = self.cursory
 		
 		self.worldx = min(
 			self.cursorx - self.cursorpadding,
@@ -137,14 +146,17 @@ class Map():
 		)
 		
 		self.load_visible()
+		
+	
+	def move_cursor(self, dx, dy, explicit=True):
+		self.set_cursor(self.cursorx+dx, self.cursory+dy, explicit)
 	
 	def scroll(self, dx, dy):
 		self.worldx += dx
 		self.worldy += dy
 		
 		# new scrolling code: The cursor stays on the same screen position while scrolling
-		self.cursorx += dx
-		self.cursory += dy
+		self.move_cursor(dx, dy)
 		
 		# old scrolling code: The cursor would stay on the same world coordinates while scrolling,
 		# and only if it was at the edge of the screen, it would get carried with the window.
@@ -164,7 +176,7 @@ class Map():
 			#)
 		#)
 		
-		self.load_visible()
+		#self.load_visible()
 	
 
 class ChunkMap():

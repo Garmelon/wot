@@ -44,8 +44,8 @@ class Client():
 		while True:
 			i = scr.getkey()
 			
-			if   i == "q": self.stop()
-			elif i == "r": self.map_.redraw()
+			if   i == "\x1b": self.stop()
+			#elif i == "r": self.map_.redraw()
 			# normal cursor movement
 			elif i == "KEY_UP":     self.map_.move_cursor(0, -1)
 			elif i == "KEY_DOWN":   self.map_.move_cursor(0, 1)
@@ -65,6 +65,7 @@ class Client():
 			elif i in string.digits + string.ascii_letters + string.punctuation + " ":
 				self.map_.write(i)
 			elif i == "\x7f": self.map_.delete()
+			elif i == "\n":   self.map_.newline()
 			
 			else: sys.stdout.write(repr(i) + "\n")
 	
