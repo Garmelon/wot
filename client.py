@@ -43,7 +43,8 @@ class Client():
 		while True:
 			i = scr.getkey()
 			
-			if i == "q": self.stop()
+			if   i == "q": self.stop()
+			elif i == "r": self.map_.redraw()
 			# normal cursor movement
 			elif i == "KEY_UP":     self.map_.move_cursor(0, -1)
 			elif i == "KEY_DOWN":   self.map_.move_cursor(0, 1)
@@ -55,8 +56,8 @@ class Client():
 			elif i == "KEY_SLEFT":  self.map_.move_cursor(-10, 0)
 			elif i == "KEY_SRIGHT": self.map_.move_cursor(10, 0)
 			# scrolling the map (10 vertical, 20 horizontal)
-			elif i == "kUP5": self.map_.scroll(0, -10)
-			elif i == "kDN5": self.map_.scroll(0, 10)
+			elif i == "kUP5":  self.map_.scroll(0, -10)
+			elif i == "kDN5":  self.map_.scroll(0, 10)
 			elif i == "kLFT5": self.map_.scroll(-20, 0)
 			elif i == "kRIT5": self.map_.scroll(20, 0)
 			

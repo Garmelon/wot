@@ -34,6 +34,11 @@ class Map():
 	def __exit__(self, type, value, tb):
 		self._lock.release()
 	
+	def redraw(self):
+		self._pad.redrawwin()
+		
+		self.drawevent.set()
+	
 	def draw(self):
 		with self.chunkpool as pool:
 			for x in range(chunkx(self.width) + 2):      # +2, not +1, or there will be empty gaps
