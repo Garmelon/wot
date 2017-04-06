@@ -12,7 +12,7 @@ def chunky(value):
 	return value//CHUNK_HEIGHT
 
 def inchunkx(value):
-	return value%CHUNK_HEIGHT
+	return value%CHUNK_WIDTH
 
 def inchunky(value):
-	return value%CHUNK_WIDTH
+	return value%CHUNK_HEIGHT
