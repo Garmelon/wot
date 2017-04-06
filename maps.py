@@ -91,7 +91,14 @@ class Map():
 		return coords
 	
 	def write(self, char):
-		pass
+		with self.chunkpool as pool:
+			chunk = pool.get(chunkx(self.cursorx), chunky(self.cursory))
+			if not chunk:
+				chunk = pool.create(chunkx(self.cursorx), chunky(self.cursory))
+			
+			chunk.setch(inchunkx(self.cursorx), inchunky(self.cursory), char)
+		
+		self.move_cursor(1, 0)
 	
 	def move_cursor(self, dx, dy):
 		self.cursorx += dx
