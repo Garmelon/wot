@@ -1,3 +1,4 @@
+from collections import namedtuple
 import curses
 import math
 import threading
@@ -28,6 +29,9 @@ class Map():
 		
 		self._pad = curses.newpad(5, 5)
 		self.resize(width, height)
+		
+		if curses.has_colors():
+			curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE) # chunk not loaded
 	
 	def __enter__(self):
 		self._lock.acquire()
@@ -51,13 +55,17 @@ class Map():
 					else:
 						self.draw_empty_to(x*CHUNK_WIDTH, y*CHUNK_HEIGHT)
 		
-		# set cursor position in world
+		self.update_cursor()
+		self.noutrefresh()
+	
+	def noutrefresh(self):
+		self._pad.noutrefresh(inchunky(self.worldy), inchunkx(self.worldx), 0, 0, self.height-1, self.width-1)
+	
+	def update_cursor(self):
 		self._pad.move(
 			self.cursory - chunky(self.worldy)*CHUNK_HEIGHT,
 			self.cursorx - chunkx(self.worldx)*CHUNK_WIDTH
 		)
-		
-		self._pad.noutrefresh(inchunky(self.worldy), inchunkx(self.worldx), 0, 0, self.height-1, self.width-1)
 	
 	def draw_empty_to(self, x, y):
 		if curses.has_colors():
@@ -71,7 +79,9 @@ class Map():
 	
 	def load_visible(self):
 		with self.chunkpool as pool:
-			pool.load_list(self.visible_chunk_coords())
+			coords = self.visible_chunk_coords()
+			pool.load_list(coords)
+			#pool.clean_up(except_for=coords)
 		
 		self.drawevent.set()
 	
@@ -103,12 +113,11 @@ class Map():
 	def write(self, char):
 		with self.chunkpool as pool:
 			chunk = pool.get(Position(chunkx(self.cursorx), chunky(self.cursory)))
-			if not chunk:
-				chunk = pool.create(Position(chunkx(self.cursorx), chunky(self.cursory)))
 			
-			chunk.set(inchunkx(self.cursorx), inchunky(self.cursory), char)
-		
-		self.move_cursor(1, 0, False)
+			if chunk:
+				chunk.set(inchunkx(self.cursorx), inchunky(self.cursory), char)
+				
+				self.move_cursor(1, 0, False)
 	
 	def delete(self):
 		with self.chunkpool as pool:
@@ -177,7 +186,8 @@ class Map():
 		#)
 		
 		#self.load_visible()
-	
+
+ChunkStyle = namedtuple("ChunkStyle", "string color")
 
 class ChunkMap():
 	"""
@@ -185,17 +195,93 @@ class ChunkMap():
 	Might show additional details too (i.e. if a chunk has been modified).
 	"""
 	
-	def __init__(self, chunkpool):
-		self.cpool = chunkpool
-#	
-#	def draw(self):
-#		pass
-#	
-#	def resize(self, size):
-#		pass
-#	
-	def move(self, x, y, corner):
-		pass
+	styles = {
+		"empty": ChunkStyle("()", 2),
+		"normal": ChunkStyle("[]", 3),
+		"old": ChunkStyle("{}", 4),
+		"visible": ChunkStyle("##", 5),
+		"modified": ChunkStyle("!!", 6),
+	}
 	
-	def toggle(self):
-		pass
+	def __init__(self, map_):
+		self.map_ = map_
+		self.chunkpool = map_.chunkpool
+		self.corner = "ur" # upper right
+		
+		#minx, maxx, miny, maxy = self.get_min_max()
+		#self.win = curses.newwin(maxy-miny+2, maxx-minx+2)
+		self.win = curses.newwin(2, 2)
+		
+		if curses.has_colors():
+			curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_BLUE) # empty chunk
+			curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE) # chunk
+			curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_YELLOW) # old chunk
+			curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_GREEN) # visible chunk
+			curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_RED) # modified chunk
+	
+	def update_size(self, sizex, sizey):
+		winy, winx = self.win.getmaxyx()
+		if winx != 2*sizex + 4 or winy != sizey + 3:
+			self.win.resize(sizey + 3, 2*sizex + 4)
+		sys.stderr.write("{}\n".format(self.win.getmaxyx()))
+	
+	def draw(self):
+		with self.chunkpool as pool:
+			minx, maxx, miny, maxy = self.get_min_max(pool)
+			sizex = maxx - minx
+			sizey = maxy - miny
+			sys.stderr.write("{} {} {} {} | {} {}\n".format(minx, maxx, miny, maxy, sizex, sizey))
+			self.update_size(sizex, sizey)
+			
+			self.win.erase()
+			self.win.border()
+			
+			for pos, chunk in pool._chunks.items():
+				tp = self.type_of(pos, chunk)
+				sys.stderr.write(tp + "\n")
+				sys.stderr.write("{} {}\n".format(pos.x - minx + 1, pos.y - miny + 1))
+				if curses.has_colors():
+					self.win.addstr(
+						pos.y - miny + 1,
+						2*(pos.x - minx) + 1,
+						"  ",
+						curses.color_pair(self.styles[tp].color)
+					)
+				else:
+					self.win.addstr(
+						pos.y - miny + 1,
+						2*(pos.x - minx) + 1,
+						self.styles[tp].string
+					)
+			
+			self.win.noutrefresh()
+	
+	def get_min_max(self, pool):
+		minx = min(pos.x for pos in pool._chunks)
+		maxx = max(pos.x for pos in pool._chunks)
+		miny = min(pos.y for pos in pool._chunks)
+		maxy = max(pos.y for pos in pool._chunks)
+		
+		return minx, maxx, miny, maxy
+	
+	def get_size(self):
+		minx, maxx, miny, maxy = self.get_min_max()
+		return maxx - minx, maxy - miny
+	
+	def type_of(self, pos, chunk):
+		if chunk.modified():
+			return "modified"
+		
+		if pos in self.map_.visible_chunk_coords():
+			return "visible"
+		
+		if chunk.age() > self.chunkpool.max_age:
+			return "old"
+		
+		if chunk.empty():
+			return "empty"
+		
+		return "normal"
+	
+	#def move(self, x, y, corner):
+		#pass

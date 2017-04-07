@@ -2,8 +2,8 @@ from collections import namedtuple
 
 Position = namedtuple("Position", "x y")
 
-CHUNK_WIDTH = 16
-CHUNK_HEIGHT = 8
+CHUNK_WIDTH = 64
+CHUNK_HEIGHT = 32
 
 def chunkx(value):
 	return value//CHUNK_WIDTH

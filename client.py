@@ -2,18 +2,19 @@ import curses
 import string
 import sys
 import threading
-from maps import Map
-from chunks import ChunkPool
+from maps import Map, ChunkMap
+from clientchunkpool import ClientChunkPool
 
 # import fron chunks, maps, clientchunkpool
 
 class Client():
 	def __init__(self, address):
 		self.stopping = False
+		self.chunkmap_active = False
 		
 		self.address = address
 		self.drawevent = threading.Event()
-		self.pool = ChunkPool()
+		self.pool = ClientChunkPool()
 		#self.map_ = Map(sizex, sizey, self.pool)
 		#self.chunkmap = Chunkmap(sizex, sizey, self.pool) # size changeable by +/-?
 		
@@ -22,6 +23,7 @@ class Client():
 	def launch(self, stdscr):
 		sizey, sizex = stdscr.getmaxyx()
 		self.map_ = Map(sizex, sizey, self.pool, self.drawevent)
+		self.chunkmap = ChunkMap(self.map_)
 		
 		# start input thread
 		self.inputthread = threading.Thread(
@@ -37,6 +39,16 @@ class Client():
 			stdscr.noutrefresh()
 			with self.map_ as m:
 				m.draw()
+				
+				if self.chunkmap_active:
+					self.chunkmap.draw()
+					curses.curs_set(False)
+				else:
+					curses.curs_set(True)
+				
+				#m.update_cursor()
+				#m.noutrefresh()
+			
 			curses.doupdate()
 			self.drawevent.clear()
 	
@@ -45,7 +57,10 @@ class Client():
 			i = scr.getkey()
 			
 			if   i == "\x1b": self.stop()
-			#elif i == "r": self.map_.redraw()
+			elif i == "KEY_F(2)":
+				self.chunkmap_active = not self.chunkmap_active
+				self.drawevent.set()
+			elif i == "KEY_F(5)": self.map_.redraw()
 			# normal cursor movement
 			elif i == "KEY_UP":     self.map_.move_cursor(0, -1)
 			elif i == "KEY_DOWN":   self.map_.move_cursor(0, 1)

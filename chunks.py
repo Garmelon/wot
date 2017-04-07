@@ -58,7 +58,7 @@ class ChunkDiff():
 		return [s[i:i+CHUNK_WIDTH] for i in range(0, CHUNK_WIDTH*CHUNK_HEIGHT, CHUNK_WIDTH)]
 	
 	def empty(self):
-		return bool(self._chars)
+		return not bool(self._chars)
 	
 
 class Chunk():
@@ -96,8 +96,11 @@ class Chunk():
 	def get_changes(self):
 		return self._modifications
 	
-	def touch(self):
-		self.last_modified = time.time()
+	def touch(self, now=None):
+		self.last_modified = now or time.time()
+	
+	def age(self, now=None):
+		return self.last_modified - (now or time.time())
 	
 	def draw_to(self, x, y, window):
 		for line in self._content.combine(self._modifications).lines():
@@ -136,9 +139,21 @@ class ChunkPool():
 		if not pos in self._chunks:
 			self.create(pos)
 	
+	def unload(self, pos):
+		if pos in self._chunks:
+			del self._chunks[pos]
+	
 	def load_list(self, coords):
 		for pos in coords:
 			self.load(pos)
+	
+	def unload_list(self, coords):
+		for pos in coords:
+			self.unload(pos)
+	
+	def clean_up(self, except_for=[]):
+		coords = [pos for pos in self._chunks if not pos in except_for]
+		self.unload_list(coords)
 	
 	def get(self, pos):
 		return self._chunks.get(pos)
