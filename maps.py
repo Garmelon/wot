@@ -223,14 +223,12 @@ class ChunkMap():
 		winy, winx = self.win.getmaxyx()
 		if winx != 2*sizex + 4 or winy != sizey + 3:
 			self.win.resize(sizey + 3, 2*sizex + 4)
-		sys.stderr.write("{}\n".format(self.win.getmaxyx()))
 	
 	def draw(self):
 		with self.chunkpool as pool:
 			minx, maxx, miny, maxy = self.get_min_max(pool)
 			sizex = maxx - minx
 			sizey = maxy - miny
-			sys.stderr.write("{} {} {} {} | {} {}\n".format(minx, maxx, miny, maxy, sizex, sizey))
 			self.update_size(sizex, sizey)
 			
 			self.win.erase()
@@ -238,8 +236,6 @@ class ChunkMap():
 			
 			for pos, chunk in pool._chunks.items():
 				tp = self.type_of(pos, chunk)
-				sys.stderr.write(tp + "\n")
-				sys.stderr.write("{} {}\n".format(pos.x - minx + 1, pos.y - miny + 1))
 				if curses.has_colors():
 					self.win.addstr(
 						pos.y - miny + 1,
