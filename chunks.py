@@ -85,9 +85,12 @@ class Chunk():
 		self.touch()
 	
 	def commit_changes(self):
-		self._content.apply(self._modifications)
-		self._content.clear_deletions()
+		self.commit_diff(self._modifications)
 		self._modifications = ChunkDiff()
+	
+	def commit_diff(self, diff):
+		self._content.apply(diff)
+		self._content.clear_deletions()
 		self.touch()
 	
 	def drop_changes(self):
@@ -131,29 +134,50 @@ class ChunkPool():
 	def __exit__(self, type, value, tb):
 		self._lock.release()
 	
+	def get(self, pos):
+		return self._chunks.get(pos)
+	
 	def create(self, pos):
-		self._chunks[pos] = Chunk()
-		return self._chunks[pos]
+		chunk = Chunk()
+		self._chunks[pos] = chunk
+		return chunk
+	
+	def commit_changes(self):
+		changes = []
+		
+		for pos, chunk in self._chunks.items():
+			changes.append((pos, chunk.get_changes()))
+			chunk.commit_changes()
+		
+		return changes
+	
+	def save_changes(self):
+		self.commit_changes()
 	
 	def load(self, pos):
 		if not pos in self._chunks:
 			self.create(pos)
 	
-	def unload(self, pos):
-		if pos in self._chunks:
-			del self._chunks[pos]
-	
 	def load_list(self, coords):
 		for pos in coords:
 			self.load(pos)
+	
+	def unload(self, pos):
+		if pos in self._chunks:
+			del self._chunks[pos]
 	
 	def unload_list(self, coords):
 		for pos in coords:
 			self.unload(pos)
 	
-	def clean_up(self, except_for=[]):
-		coords = [pos for pos in self._chunks if not pos in except_for]
+	def clean_up(self, except_for=[], condition=lambda chunk: True):
+		# old list comprehension which became too long:
+		#coords = [pos for pos, chunk in self._chunks.items() if not pos in except_for and condition(chunk)]
+		
+		coords = []
+		
+		for pos, chunk in self._chunks.items():
+			if not pos in except_for and condition(chunk):
+				coords.append(pos)
+		
 		self.unload_list(coords)
-	
-	def get(self, pos):
-		return self._chunks.get(pos)
