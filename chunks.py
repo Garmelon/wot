@@ -170,14 +170,14 @@ class ChunkPool():
 		for pos in coords:
 			self.unload(pos)
 	
-	def clean_up(self, except_for=[], condition=lambda chunk: True):
+	def clean_up(self, except_for=[], condition=lambda pos, chunk: True):
 		# old list comprehension which became too long:
 		#coords = [pos for pos, chunk in self._chunks.items() if not pos in except_for and condition(chunk)]
 		
 		coords = []
 		
 		for pos, chunk in self._chunks.items():
-			if not pos in except_for and condition(chunk):
+			if not pos in except_for and condition(pos, chunk):
 				coords.append(pos)
 		
 		self.unload_list(coords)

@@ -15,7 +15,8 @@ class Map():
 	def __init__(self, width, height, chunkpool, drawevent):
 		self._lock = threading.RLock()
 		
-		self.chunkpreload = 0
+		self.chunkpreload = 0 # preload chunks in this radius (they will count as "visible")
+		self.chunkunload = 5 # don't unload chunks within this radius
 		self.cursorpadding = 2
 		self.worldx = 0
 		self.worldy = 0
@@ -77,11 +78,20 @@ class Map():
 				s = "."*CHUNK_WIDTH
 				self._pad.addstr(y+dy, x, s)
 	
+	def _unload_condition(self, pos, chunk):
+		xstart = chunkx(self.worldx) - self.chunkunload
+		ystart = chunky(self.worldy) - self.chunkunload
+		xend = xstart + chunkx(self.width)+2 + 2*self.chunkunload
+		yend = ystart + chunky(self.height)+2 + 2*self.chunkunload
+		
+		in_range = pos.x >= xstart and pos.x < xend and pos.y >= ystart and pos.y < yend
+		return not in_range
+	
 	def load_visible(self):
 		with self.chunkpool as pool:
 			coords = self.visible_chunk_coords()
 			pool.load_list(coords)
-			#pool.clean_up(except_for=coords)
+			pool.clean_up(except_for=coords, condition=self._unload_condition)
 		
 		self.drawevent.set()
 	
