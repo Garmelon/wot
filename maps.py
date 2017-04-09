@@ -4,15 +4,13 @@ import math
 import threading
 from utils import CHUNK_HEIGHT, CHUNK_WIDTH, chunkx, chunky, inchunkx, inchunky, Position
 
-import sys
-
 class Map():
 	"""
 	A map which displays chunks and a cursor on the screen.
 	Allows for user to modify chunks in an intuitive way.
 	"""
 	
-	def __init__(self, width, height, chunkpool, drawevent):
+	def __init__(self, width, height, chunkpool, client):
 		self._lock = threading.RLock()
 		
 		self.chunkpreload = 0 # preload chunks in this radius (they will count as "visible")
@@ -26,7 +24,7 @@ class Map():
 		self.lastcury = self.cursory
 		
 		self.chunkpool = chunkpool
-		self.drawevent = drawevent
+		self.client = client
 		
 		self._pad = curses.newpad(5, 5)
 		self.resize(width, height)
@@ -44,7 +42,7 @@ class Map():
 	def redraw(self):
 		self._pad.redrawwin()
 		
-		self.drawevent.set()
+		self.client.redraw()
 	
 	def draw(self):
 		with self.chunkpool as pool:
@@ -93,7 +91,7 @@ class Map():
 			pool.load_list(coords)
 			pool.clean_up(except_for=coords, condition=self._unload_condition)
 		
-		self.drawevent.set()
+		self.client.redraw()
 	
 	def resize(self, width, height):
 		self.width = width
@@ -208,7 +206,7 @@ class ChunkMap():
 	styles = {
 		"empty": ChunkStyle("()", 2),
 		"normal": ChunkStyle("[]", 3),
-		"old": ChunkStyle("{}", 4),
+		"unload": ChunkStyle("{}", 4),
 		"visible": ChunkStyle("##", 5),
 		"modified": ChunkStyle("!!", 6),
 	}
@@ -225,7 +223,7 @@ class ChunkMap():
 		if curses.has_colors():
 			curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_BLUE) # empty chunk
 			curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE) # chunk
-			curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_YELLOW) # old chunk
+			curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_YELLOW) # chunk to be unloaded
 			curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_GREEN) # visible chunk
 			curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_RED) # modified chunk
 	
@@ -236,7 +234,10 @@ class ChunkMap():
 	
 	def draw(self):
 		with self.chunkpool as pool:
-			minx, maxx, miny, maxy = self.get_min_max(pool)
+			if pool._chunks:
+				minx, maxx, miny, maxy = self.get_min_max(pool)
+			else:
+				minx, maxx, miny, maxy = 0, 0, 0, 0
 			sizex = maxx - minx
 			sizey = maxy - miny
 			self.update_size(sizex, sizey)
@@ -281,8 +282,8 @@ class ChunkMap():
 		if pos in self.map_.visible_chunk_coords():
 			return "visible"
 		
-		if chunk.age() > self.chunkpool.max_age:
-			return "old"
+		if self.map_._unload_condition(pos, chunk):
+			return "unload"
 		
 		if chunk.empty():
 			return "empty"

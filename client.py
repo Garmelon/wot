@@ -1,11 +1,11 @@
 import curses
+import os
 import string
 import sys
 import threading
 from maps import Map, ChunkMap
+from chunks import ChunkDiff
 from clientchunkpool import ClientChunkPool
-
-# import fron chunks, maps, clientchunkpool
 
 class Client():
 	def __init__(self, address):
@@ -13,8 +13,8 @@ class Client():
 		self.chunkmap_active = False
 		
 		self.address = address
-		self.drawevent = threading.Event()
-		self.pool = ClientChunkPool()
+		self._drawevent = threading.Event()
+		self.pool = ClientChunkPool(self)
 		#self.map_ = Map(sizex, sizey, self.pool)
 		#self.chunkmap = Chunkmap(sizex, sizey, self.pool) # size changeable by +/-?
 		
@@ -22,7 +22,7 @@ class Client():
 	
 	def launch(self, stdscr):
 		sizey, sizex = stdscr.getmaxyx()
-		self.map_ = Map(sizex, sizey, self.pool, self.drawevent)
+		self.map_ = Map(sizex, sizey, self.pool, self)
 		self.chunkmap = ChunkMap(self.map_)
 		
 		# start input thread
@@ -35,7 +35,8 @@ class Client():
 		self.inputthread.start()
 		
 		while not self.stopping:
-			self.drawevent.wait()
+			self._drawevent.wait()
+			self._drawevent.clear()
 			stdscr.noutrefresh()
 			with self.map_ as m:
 				m.draw()
@@ -45,12 +46,14 @@ class Client():
 					curses.curs_set(False)
 				else:
 					curses.curs_set(True)
-				
-				#m.update_cursor()
-				#m.noutrefresh()
+			
+			#m.update_cursor()
+			#m.noutrefresh()
 			
 			curses.doupdate()
-			self.drawevent.clear()
+	
+	def redraw(self):
+		self._drawevent.set()
 	
 	def input_thread(self, scr):
 		while True:
@@ -59,7 +62,7 @@ class Client():
 			if   i == "\x1b": self.stop()
 			elif i == "KEY_F(2)":
 				self.chunkmap_active = not self.chunkmap_active
-				self.drawevent.set()
+				self.redraw()
 			elif i == "KEY_F(5)": self.map_.redraw()
 			# scrolling the map (10 vertical, 20 horizontal)
 			elif i == "kUP5":  self.map_.scroll(0, -10)
@@ -86,17 +89,31 @@ class Client():
 			elif i == "\x7f": self.map_.delete()
 			elif i == "\n":   self.map_.newline()
 			
-			else: sys.stdout.write(repr(i) + "\n")
+			else: sys.stderr.write(repr(i) + "\n")
 	
 	def stop(self):
 		self.stopping = True
-		self.drawevent.set()
+		self.redraw()
+	
+	def request_chunks(self, coords):
+		def execute():
+			changes = [(pos, ChunkDiff()) for pos in coords]
+			with self.pool as pool:
+				pool.apply_changes(changes)
+		
+		tx = threading.Timer(1, execute)
+		tx.start()
+	
+	def send_changes(self, changes):
+		pass
 
 def main(argv):
 	if len(argv) != 2:
 		print("Usage:")
 		print("  {} address".format(argv[0]))
 		return
+	
+	os.environ.setdefault('ESCDELAY', '25') # only a 25 millisecond delay
 	
 	client = Client(argv[1])
 	curses.wrapper(client.launch)

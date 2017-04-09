@@ -1,6 +1,6 @@
 import threading
 import time
-from utils import CHUNK_WIDTH, CHUNK_HEIGHT
+from utils import CHUNK_WIDTH, CHUNK_HEIGHT, Position
 
 class ChunkDiff():
 	"""
@@ -134,13 +134,27 @@ class ChunkPool():
 	def __exit__(self, type, value, tb):
 		self._lock.release()
 	
+	def set(self, pos, chunk):
+		self._chunks[pos] = chunk
+	
 	def get(self, pos):
 		return self._chunks.get(pos)
 	
 	def create(self, pos):
 		chunk = Chunk()
-		self._chunks[pos] = chunk
+		self.set(pos, chunk)
 		return chunk
+	
+	def apply_changes(self, changes):
+		for change in changes:
+			pos = Position(change[0][0], change[0][1])
+			diff = change[1]
+			
+			chunk = self.get(pos)
+			if not chunk:
+				chunk = self.create(pos)
+			
+			chunk.commit_diff(diff)
 	
 	def commit_changes(self):
 		changes = []
@@ -173,6 +187,8 @@ class ChunkPool():
 	def clean_up(self, except_for=[], condition=lambda pos, chunk: True):
 		# old list comprehension which became too long:
 		#coords = [pos for pos, chunk in self._chunks.items() if not pos in except_for and condition(chunk)]
+		
+		self.save_changes()
 		
 		coords = []
 		
