@@ -105,10 +105,13 @@ class Chunk():
 	def age(self, now=None):
 		return self.last_modified - (now or time.time())
 	
-	def draw_to(self, x, y, window):
-		for line in self._content.combine(self._modifications).lines():
-			window.addstr(y, x, line)
-			y += 1
+	#def draw_to(self, x, y, window):
+		#for line in self._content.combine(self._modifications).lines():
+			#window.addstr(y, x, line)
+			#y += 1
+	
+	def lines(self):
+		return self._content.combine(self._modifications).lines()
 	
 	def modified(self):
 		return not self._modifications.empty()

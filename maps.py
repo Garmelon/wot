@@ -26,11 +26,14 @@ class Map():
 		self.chunkpool = chunkpool
 		self.client = client
 		
+		self.alternating_colors = False
+		
 		self._pad = curses.newpad(5, 5)
 		self.resize(width, height)
 		
 		if curses.has_colors():
 			curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE) # chunk not loaded
+			curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLUE) # alternate color for chunks
 	
 	def __enter__(self):
 		self._lock.acquire()
@@ -48,9 +51,10 @@ class Map():
 		with self.chunkpool as pool:
 			for x in range(chunkx(self.width) + 2):      # +2, not +1, or there will be empty gaps
 				for y in range(chunky(self.height) + 2): # in the bottom and right borders
-					chunk = pool.get(Position(x+chunkx(self.worldx), y+chunky(self.worldy)))
+					pos = Position(x+chunkx(self.worldx), y+chunky(self.worldy))
+					chunk = pool.get(pos)
 					if chunk:
-						chunk.draw_to(x*CHUNK_WIDTH, y*CHUNK_HEIGHT, self._pad)
+						self.draw_chunk_to(x*CHUNK_WIDTH, y*CHUNK_HEIGHT, chunk, (pos.x+pos.y)%2)
 					else:
 						self.draw_empty_to(x*CHUNK_WIDTH, y*CHUNK_HEIGHT)
 		
@@ -68,13 +72,22 @@ class Map():
 	
 	def draw_empty_to(self, x, y):
 		if curses.has_colors():
-			curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
 			for dy in range(CHUNK_HEIGHT):
 				self._pad.addstr(y+dy, x, " "*CHUNK_WIDTH, curses.color_pair(1))
 		else:
 			for dy in range(CHUNK_HEIGHT):
 				s = "."*CHUNK_WIDTH
 				self._pad.addstr(y+dy, x, s)
+	
+	def draw_chunk_to(self, x, y, chunk, blue=False):
+		if self.alternating_colors and curses.has_colors() and blue:
+			for line in chunk.lines():
+				self._pad.addstr(y, x, line, curses.color_pair(2))
+				y += 1
+		else:
+			for line in chunk.lines():
+				self._pad.addstr(y, x, line)
+				y += 1
 	
 	def _unload_condition(self, pos, chunk):
 		xstart = chunkx(self.worldx) - self.chunkunload
@@ -204,11 +217,11 @@ class ChunkMap():
 	"""
 	
 	styles = {
-		"empty": ChunkStyle("()", 2),
-		"normal": ChunkStyle("[]", 3),
-		"unload": ChunkStyle("{}", 4),
-		"visible": ChunkStyle("##", 5),
-		"modified": ChunkStyle("!!", 6),
+		"empty":    ChunkStyle("()", 3),
+		"normal":   ChunkStyle("[]", 4),
+		"unload":   ChunkStyle("{}", 5),
+		"visible":  ChunkStyle("##", 6),
+		"modified": ChunkStyle("!!", 7),
 	}
 	
 	def __init__(self, map_):
@@ -221,11 +234,11 @@ class ChunkMap():
 		self.win = curses.newwin(2, 2)
 		
 		if curses.has_colors():
-			curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_BLUE) # empty chunk
-			curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE) # chunk
-			curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_YELLOW) # chunk to be unloaded
-			curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_GREEN) # visible chunk
-			curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_RED) # modified chunk
+			curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_BLUE) # empty chunk
+			curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_WHITE) # chunk
+			curses.init_pair(5, curses.COLOR_BLACK, curses.COLOR_YELLOW) # chunk to be unloaded
+			curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_GREEN) # visible chunk
+			curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_RED) # modified chunk
 	
 	def update_size(self, sizex, sizey):
 		winy, winx = self.win.getmaxyx()

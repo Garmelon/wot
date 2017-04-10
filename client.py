@@ -63,6 +63,9 @@ class Client():
 			elif i == "KEY_F(2)":
 				self.chunkmap_active = not self.chunkmap_active
 				self.redraw()
+			elif i == "KEY_F(3)":
+				self.map_.alternating_colors = not self.map_.alternating_colors
+				self.redraw()
 			elif i == "KEY_F(5)": self.map_.redraw()
 			# scrolling the map (10 vertical, 20 horizontal)
 			elif i == "kUP5":  self.map_.scroll(0, -10)
