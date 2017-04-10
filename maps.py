@@ -83,7 +83,7 @@ class Map():
 		yend = ystart + chunky(self.height)+2 + 2*self.chunkunload
 		
 		in_range = pos.x >= xstart and pos.x < xend and pos.y >= ystart and pos.y < yend
-		return not in_range
+		return not in_range and not chunk.modified()
 	
 	def load_visible(self):
 		with self.chunkpool as pool:

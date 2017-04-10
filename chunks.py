@@ -188,7 +188,7 @@ class ChunkPool():
 		# old list comprehension which became too long:
 		#coords = [pos for pos, chunk in self._chunks.items() if not pos in except_for and condition(chunk)]
 		
-		self.save_changes()
+		#self.save_changes() # needs to be accounted for by the user
 		
 		coords = []
 		
