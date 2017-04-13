@@ -81,48 +81,54 @@ class Client():
 	
 	def input_thread(self, scr):
 		while True:
-			i = scr.getkey()
+			i = scr.get_wch()
+			#sys.stderr.write(f"input: {i!r}\n")
 			
 			if   i == "\x1b": self.stop()
-			elif i == "KEY_F(2)":
+			elif i == 266: # F2
 				self.chunkmap_active = not self.chunkmap_active
 				self.redraw()
-			elif i == "KEY_F(3)":
+			elif i == 267: # F3
 				self.map_.alternating_colors = not self.map_.alternating_colors
 				self.redraw()
-			elif i == "KEY_F(5)": self.map_.redraw()
+			elif i == 269: # F5
+				self.map_.redraw()
 			# scrolling the map (10 vertical, 20 horizontal)
-			elif i == "kUP5":  self.map_.scroll(0, -10)
-			elif i == "kDN5":  self.map_.scroll(0, 10)
-			elif i == "kLFT5": self.map_.scroll(-20, 0)
-			elif i == "kRIT5": self.map_.scroll(20, 0)
+			elif i == 569: self.map_.scroll(0, -10) # ctrl + up
+			elif i == 528: self.map_.scroll(0, 10)  # ctrl + down
+			elif i == 548: self.map_.scroll(-20, 0) # ctrl + left
+			elif i == 563: self.map_.scroll(20, 0)  # ctrl + right
 			
 			# break here if chunkmap is shown: Don't allow for cursor movement or input
 			elif self.chunkmap_active: pass
 		
 			# quick cursor movement (5 vertical, 10 horizontal)
-			elif i == "KEY_SR":     self.map_.move_cursor(0, -5)
-			elif i == "KEY_SF":     self.map_.move_cursor(0, 5)
-			elif i == "KEY_SLEFT":  self.map_.move_cursor(-10, 0)
-			elif i == "KEY_SRIGHT": self.map_.move_cursor(10, 0)
+			elif i == 337: self.map_.move_cursor(0, -5)  # shift + up
+			elif i == 336: self.map_.move_cursor(0, 5)   # shift + down
+			elif i == 393: self.map_.move_cursor(-10, 0) # shift + left
+			elif i == 402: self.map_.move_cursor(10, 0)  # shift + right
 			# normal cursor movement
-			elif i == "KEY_UP":     self.map_.move_cursor(0, -1)
-			elif i == "KEY_DOWN":   self.map_.move_cursor(0, 1)
-			elif i == "KEY_LEFT":   self.map_.move_cursor(-1, 0)
-			elif i == "KEY_RIGHT":  self.map_.move_cursor(1, 0)
+			elif i == 259: self.map_.move_cursor(0, -1) # up
+			elif i == 258: self.map_.move_cursor(0, 1)  # down
+			elif i == 260: self.map_.move_cursor(-1, 0) # left
+			elif i == 261: self.map_.move_cursor(1, 0)  # right
 			# edit world
-			elif i in string.digits + string.ascii_letters + string.punctuation + " ":
-				self.map_.write(i)
 			elif i == "\x7f": self.map_.delete()
 			elif i == "\n":   self.map_.newline()
+			#elif i in string.digits + string.ascii_letters + string.punctuation + " ":
+				#self.map_.write(i)
+			elif isinstance(i, str) and len(i) == 1 and (i not in string.whitespace or i == " "):
+				#sys.stderr.write(f"{i!r}\n")
+				self.map_.write(i)
 			
-			else: sys.stderr.write(repr(i) + "\n")
+			#else: sys.stderr.write(repr(i) + "\n")
 	
 	def connection_thread(self):
 		while True:
 			try:
 				j = self._ws.recv()
-				self.handle_json(json.loads(j))
+				if j:
+					self.handle_json(json.loads(j))
 			except (WSException, ConnectionResetError, OSError):
 				#self.stop()
 				return
