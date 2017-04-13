@@ -16,10 +16,10 @@ class Map():
 		self.chunkpreload = 0 # preload chunks in this radius (they will count as "visible")
 		self.chunkunload = 5 # don't unload chunks within this radius
 		self.cursorpadding = 2
-		self.worldx = 0
-		self.worldy = 0
-		self.cursorx = self.cursorpadding
-		self.cursory = self.cursorpadding
+		self.worldx = -self.cursorpadding
+		self.worldy = -self.cursorpadding
+		self.cursorx = 0
+		self.cursory = 0
 		self.lastcurx = self.cursorx
 		self.lastcury = self.cursory
 		
@@ -137,6 +137,7 @@ class Map():
 			
 			if chunk:
 				chunk.set(inchunkx(self.cursorx), inchunky(self.cursory), char)
+				pool.save_changes_delayed()
 				
 				self.move_cursor(1, 0, False)
 	
@@ -145,8 +146,9 @@ class Map():
 			chunk = pool.get(Position(chunkx(self.cursorx-1), chunky(self.cursory)))
 			if chunk:
 				chunk.delete(inchunkx(self.cursorx-1), inchunky(self.cursory))
-			
-		self.move_cursor(-1, 0, False)
+				pool.save_changes_delayed()
+				
+				self.move_cursor(-1, 0, False)
 	
 	def newline(self):
 		self.set_cursor(self.lastcurx, self.lastcury+1)
@@ -207,6 +209,9 @@ class Map():
 		#)
 		
 		#self.load_visible()
+	
+	def apply_changes(self, changes):
+		self.chunkpool.apply_changes(changes)
 
 ChunkStyle = namedtuple("ChunkStyle", "string color")
 

@@ -1,4 +1,4 @@
-from .chunks.py import ChunkPool
+from chunks import ChunkPool
 
 class ChunkDB():
 	"""

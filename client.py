@@ -1,10 +1,15 @@
 import curses
+import json
 import os
 import string
 import sys
 import threading
+import websocket
+from websocket import WebSocketException as WSException
+
 from maps import Map, ChunkMap
 from chunks import ChunkDiff
+from utils import Position
 from clientchunkpool import ClientChunkPool
 
 class Client():
@@ -12,7 +17,7 @@ class Client():
 		self.stopping = False
 		self.chunkmap_active = False
 		
-		self.address = address
+		self.address = f"ws://{address}/"
 		self._drawevent = threading.Event()
 		self.pool = ClientChunkPool(self)
 		#self.map_ = Map(sizex, sizey, self.pool)
@@ -21,9 +26,27 @@ class Client():
 		#self.sock = socket.Socket(...)
 	
 	def launch(self, stdscr):
+		# connect to server
+		try:
+			self._ws = websocket.create_connection(
+				self.address,
+				enable_multithread=True
+			)
+		except ConnectionRefusedError:
+			sys.stderr.write(f"Could not connect to server: {self.address!r}\n")
+			return
+		
+		# create map etc.
 		sizey, sizex = stdscr.getmaxyx()
 		self.map_ = Map(sizex, sizey, self.pool, self)
 		self.chunkmap = ChunkMap(self.map_)
+		
+		# start connection thread
+		self.connectionthread = threading.Thread(
+			target=self.connection_thread,
+			name="connectionthread"
+		)
+		self.connectionthread.start()
 		
 		# start input thread
 		self.inputthread = threading.Thread(
@@ -34,6 +57,7 @@ class Client():
 		)
 		self.inputthread.start()
 		
+		# update screen until stopped
 		while not self.stopping:
 			self._drawevent.wait()
 			self._drawevent.clear()
@@ -94,26 +118,60 @@ class Client():
 			
 			else: sys.stderr.write(repr(i) + "\n")
 	
-	def stop(self):
-		self.stopping = True
-		self.redraw()
+	def connection_thread(self):
+		while True:
+			try:
+				j = self._ws.recv()
+				self.handle_json(json.loads(j))
+			except (WSException, ConnectionResetError, OSError):
+				#self.stop()
+				return
 	
+	def handle_json(self, message):
+		sys.stderr.write(f"message: {message}\n")
+		if message["type"] == "apply-changes":
+			changes = []
+			for chunk in message["data"]:
+				pos = Position(chunk[0][0], chunk[0][1])
+				change = ChunkDiff.from_dict(chunk[1])
+				changes.append((pos, change))
+			
+			sys.stderr.write(f"Changes to apply: {changes}\n")
+			self.map_.apply_changes(changes)
+	
+	def stop(self):
+		sys.stderr.write("Stopping!\n")
+		self.stopping = True
+		self._ws.close()
+		self.redraw()
+
 	def request_chunks(self, coords):
-		def execute():
-			changes = [(pos, ChunkDiff()) for pos in coords]
-			with self.pool as pool:
-				pool.apply_changes(changes)
+		#sys.stderr.write(f"requested chunks: {coords}\n")
+		message = {"type": "request-chunks", "data": coords}
+		self._ws.send(json.dumps(message))
 		
-		tx = threading.Timer(1, execute)
-		tx.start()
+		#def execute():
+			#changes = [(pos, ChunkDiff()) for pos in coords]
+			#with self.pool as pool:
+				#pool.apply_changes(changes)
+		
+		#tx = threading.Timer(1, execute)
+		#tx.start()
+	
+	def unload_chunks(self, coords):
+		#sys.stderr.write(f"unloading chunks: {coords}\n")
+		message = {"type": "unload-chunks", "data": coords}
+		self._ws.send(json.dumps(message))
 	
 	def send_changes(self, changes):
-		pass
+		#sys.stderr.write(f"sending changes: {changes}\n")
+		message = {"type": "save-changes", "data": changes}
+		self._ws.send(json.dumps(message))
 
 def main(argv):
 	if len(argv) != 2:
 		print("Usage:")
-		print("  {} address".format(argv[0]))
+		print(f"  {argv[0]} address")
 		return
 	
 	os.environ.setdefault('ESCDELAY', '25') # only a 25 millisecond delay

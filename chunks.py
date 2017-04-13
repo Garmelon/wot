@@ -2,6 +2,8 @@ import threading
 import time
 from utils import CHUNK_WIDTH, CHUNK_HEIGHT, Position
 
+import sys
+
 class ChunkDiff():
 	"""
 	Represents differences between two chunks (changes to be made to a chunk).
@@ -13,10 +15,16 @@ class ChunkDiff():
 	def __init__(self):
 		self._chars = {}
 	
+	def __str__(self):
+		return "cd" + str(self._chars)
+	
+	def __repr__(self):
+		return "cd" + repr(self._chars)
+	
 	@classmethod
 	def from_dict(cls, d):
 		diff = cls()
-		diff._chars = d
+		diff._chars = {int(i): v for i, v in d.items()}
 		return diff
 		#self._chars = d.copy()
 	
@@ -99,6 +107,9 @@ class Chunk():
 	def get_changes(self):
 		return self._modifications
 	
+	def as_diff(self):
+		return self._content.combine(self._modifications)
+	
 	def touch(self, now=None):
 		self.last_modified = now or time.time()
 	
@@ -111,7 +122,7 @@ class Chunk():
 			#y += 1
 	
 	def lines(self):
-		return self._content.combine(self._modifications).lines()
+		return self.as_diff().lines()
 	
 	def modified(self):
 		return not self._modifications.empty()
@@ -150,14 +161,17 @@ class ChunkPool():
 	
 	def apply_changes(self, changes):
 		for change in changes:
-			pos = Position(change[0][0], change[0][1])
+			#pos = Position(change[0][0], change[0][1])
+			pos = change[0]
 			diff = change[1]
 			
 			chunk = self.get(pos)
 			if not chunk:
 				chunk = self.create(pos)
 			
+			sys.stderr.write(f"Previous at {pos}: {chunk._content}\n")
 			chunk.commit_diff(diff)
+			sys.stderr.write(f"Afterwrd at {pos}: {chunk._content}\n")
 	
 	def commit_changes(self):
 		changes = []
@@ -177,7 +191,8 @@ class ChunkPool():
 	
 	def load_list(self, coords):
 		for pos in coords:
-			self.load(pos)
+			if pos not in self._chunks:
+				self.load(pos)
 	
 	def unload(self, pos):
 		if pos in self._chunks:
@@ -188,7 +203,7 @@ class ChunkPool():
 			self.unload(pos)
 	
 	def clean_up(self, except_for=[], condition=lambda pos, chunk: True):
-		# old list comprehension which became too long:
+		## old list comprehension which became too long:
 		#coords = [pos for pos, chunk in self._chunks.items() if not pos in except_for and condition(chunk)]
 		
 		#self.save_changes() # needs to be accounted for by the user

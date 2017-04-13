@@ -1,4 +1,7 @@
+import threading
 from chunks import ChunkPool
+
+import sys
 
 class ClientChunkPool(ChunkPool):
 	"""
@@ -9,6 +12,10 @@ class ClientChunkPool(ChunkPool):
 		super().__init__()
 		
 		self._client = client
+		self._save_thread = None
+	
+	def set(self, pos, chunk):
+		super().set(pos, chunk)
 	
 	#def commit_changes(self):
 		#changes = []
@@ -24,12 +31,44 @@ class ClientChunkPool(ChunkPool):
 		
 		self._client.redraw()
 	
+	def save_changes_delayed(self):
+		sys.stderr.write("Pre-HEHEHE\n")
+		if not self._save_thread:
+			def threadf():
+				sys.stderr.write("HEHEHE\n")
+				self.save_changes()
+				self._save_thread = None
+			self._save_thread = threading.Timer(.25, threadf)
+			self._save_thread.start()
+	
 	def save_changes(self):
 		changes = self.commit_changes()
-		self._client.send_changes(changes)
+		dchanges = []
+		for pos, change in changes:
+			dchange = change.to_dict()
+			if dchange:
+				dchanges.append((pos, dchange))
+		if dchanges:
+			self._client.send_changes(dchanges)
 	
 	def load(self, pos):
 		raise Exception
 	
 	def load_list(self, coords):
-		self._client.request_chunks(coords)
+		coords = [pos for pos in coords if pos not in self._chunks]
+		if coords:
+			self._client.request_chunks(coords)
+	
+	#def unload(self, pos):
+		#raise Exception
+	
+	def unload_list(self, coords):
+		if coords:
+			#self.save_changes()
+			self._client.unload_chunks(coords)
+			super().unload_list(coords)
+
+# What needs to happen differently from the default implementation:
+# loading -> only ask server when necessary
+# unloading -> send message to server
+# unloading -> commit changes when anything is actually unloaded
