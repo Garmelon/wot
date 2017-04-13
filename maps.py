@@ -211,7 +211,8 @@ class Map():
 		#self.load_visible()
 	
 	def apply_changes(self, changes):
-		self.chunkpool.apply_changes(changes)
+		with self.chunkpool as pool:
+			pool.apply_changes(changes)
 
 ChunkStyle = namedtuple("ChunkStyle", "string color")
 

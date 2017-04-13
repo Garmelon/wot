@@ -27,8 +27,9 @@ class WotServer(WebSocket):
 	
 	def handle_unload_chunks(self, coords):
 		for coor in coords:
-			pos = Position(coor)
-			self.loaded_chunks.remove(pos)
+			pos = Position(coor[0], coor[1])
+			if pos in self.loaded_chunks:
+				self.loaded_chunks.remove(pos)
 	
 	def handle_save_changes(self, dchanges):
 		changes = []
