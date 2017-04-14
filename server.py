@@ -5,7 +5,7 @@ import threading
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 from utils import Position
-from chunks import ChunkDiff, jsonify_changes, dejsonify_changes
+from chunks import ChunkDiff, jsonify_diffs, dejsonify_diffs
 from dbchunkpool import DBChunkPool
 
 pool = DBChunkPool()
@@ -13,17 +13,17 @@ clients = []
 
 class WotServer(WebSocket):
 	def handle_request_chunks(self, coords):
-		changes = []
+		diffs = []
 		with pool:
 			for coor in coords:
 				pos = Position(coor[0], coor[1])
-				change = pool.get(pos) or pool.create(pos)
-				changes.append((pos, change.as_diff()))
+				chunk = pool.get(pos) or pool.create(pos)
+				diffs.append((pos, chunk.as_diff()))
 				
 				self.loaded_chunks.add(pos)
 		
-		dchanges = jsonify_changes(changes)
-		message = {"type": "apply-changes", "data": dchanges}
+		ddiffs = jsonify_diffs(diffs)
+		message = {"type": "apply-changes", "data": ddiffs}
 		self.sendMessage(json.dumps(message))
 	
 	def handle_unload_chunks(self, coords):
@@ -32,51 +32,51 @@ class WotServer(WebSocket):
 			if pos in self.loaded_chunks:
 				self.loaded_chunks.remove(pos)
 	
-	def handle_save_changes(self, dchanges):
-		changes = dejsonify_changes(dchanges)
+	def handle_save_changes(self, ddiffs):
+		diffs = dejsonify_diffs(ddiffs)
 		
 		# check whether changes are correct (exclude certain characters)
 		# if not correct, send corrections them back to sender
-		legitimate_changes = []
-		illegitimate_changes = []
-		for chunk in changes:
-			if chunk[1].legitimate():
-				legitimate_changes.append(chunk)
+		legitimate_diffs = []
+		illegitimate_diffs = []
+		for dchunk in diffs:
+			if dchunk[1].legitimate():
+				legitimate_diffs.append(dchunk)
 			else:
-				illegitimate_changes.append(chunk)
+				illegitimate_diffs.append(dchunk)
 		
-		if legitimate_changes:
+		if legitimate_diffs:
 			with pool:
-				pool.apply_changes(legitimate_changes)
+				pool.apply_diffs(legitimate_diffs)
 			
 			for client in clients:
 				if client:
-					client.send_changes(legitimate_changes)
+					client.send_changes(legitimate_diffs)
 		
-		if illegitimate_changes:
-			reverse_changes = self.reverse_changes(changes)
-			reverse_dchanges = jsonify_changes(reverse_changes)
-			message = {"type": "apply-changes", "data": reverse_dchanges}
+		if illegitimate_diffs:
+			reverse_diffs = self.reverse_diffs(illegitimate_diffs)
+			reverse_ddiffs = jsonify_diffs(reverse_diffs)
+			message = {"type": "apply-changes", "data": reverse_ddiffs}
 			self.sendMessage(json.dumps(message))
 	
-	def reverse_changes(self, changes):
+	def reverse_diffs(self, diffs):
 		with pool:
-			reverse_changes = []
-			for chunk in changes:
-				pos = chunk[0]
-				change = chunk[1]
-				real_chunk = pool.get(pos) or pool.create(pos)
-				reverse_change = change.diff(real_chunk.as_diff())
-				reverse_changes.append((pos, reverse_change))
+			reverse_diffs = []
+			for dchunk in diffs:
+				pos = dchunk[0]
+				diff = dchunk[1]
+				chunk = pool.get(pos) or pool.create(pos)
+				reverse_diff = diff.diff(chunk.as_diff())
+				reverse_diffs.append((pos, reverse_diff))
 		
-		return reverse_changes
+		return reverse_diffs
 	
-	def send_changes(self, changes):
-		changes = [chunk for chunk in changes if chunk[0] in self.loaded_chunks]
-		dchanges = jsonify_changes(changes)
+	def send_changes(self, diffs):
+		diffs = [dchunk for dchunk in diffs if dchunk[0] in self.loaded_chunks]
+		ddiffs = jsonify_diffs(diffs)
 		
-		if dchanges:
-			message = {"type": "apply-changes", "data": dchanges}
+		if ddiffs:
+			message = {"type": "apply-changes", "data": ddiffs}
 			self.sendMessage(json.dumps(message))
 	
 	def handleMessage(self):

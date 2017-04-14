@@ -15,8 +15,8 @@ class ClientChunkPool(ChunkPool):
 	def set(self, pos, chunk):
 		super().set(pos, chunk)
 	
-	def apply_changes(self, changes):
-		super().apply_changes(changes)
+	def commit_diffs(self, diffs):
+		super().commit_diffs(diffs)
 		
 		self._client.redraw()
 	
@@ -29,11 +29,12 @@ class ClientChunkPool(ChunkPool):
 			self._save_thread.start()
 	
 	def save_changes(self):
-		changes = self.commit_changes()
-		changes = [chunk for chunk in changes if not chunk[1].empty()]
+		diffs = self.commit_changes()
+		# filter out empty changes/chunks
+		diffs = [dchunk for dchunk in diffs if not dchunk[1].empty()]
 		
-		if changes:
-			self._client.send_changes(changes)
+		if diffs:
+			self._client.send_changes(diffs)
 	
 	def load(self, pos):
 		raise Exception

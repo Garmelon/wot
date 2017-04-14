@@ -8,7 +8,7 @@ import websocket
 from websocket import WebSocketException as WSException
 
 from maps import Map, ChunkMap
-from chunks import ChunkDiff, jsonify_changes, dejsonify_changes
+from chunks import ChunkDiff, jsonify_diffs, dejsonify_diffs
 from utils import Position
 from clientchunkpool import ClientChunkPool
 
@@ -131,8 +131,8 @@ class Client():
 	
 	def handle_json(self, message):
 		if message["type"] == "apply-changes":
-			changes = dejsonify_changes(message["data"])
-			self.map_.apply_changes(changes)
+			diffs = dejsonify_diffs(message["data"])
+			self.map_.commit_diffs(diffs)
 	
 	def stop(self):
 		self.stopping = True
@@ -147,9 +147,9 @@ class Client():
 		message = {"type": "unload-chunks", "data": coords}
 		self._ws.send(json.dumps(message))
 	
-	def send_changes(self, changes):
-		changes = jsonify_changes(changes)
-		message = {"type": "save-changes", "data": changes}
+	def send_changes(self, diffs):
+		diffs = jsonify_diffs(diffs)
+		message = {"type": "save-changes", "data": diffs}
 		self._ws.send(json.dumps(message))
 
 def main(argv):

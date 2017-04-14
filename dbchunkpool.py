@@ -12,4 +12,6 @@ class DBChunkPool(ChunkPool):
 	A ChunkPool that can load/save chunks from/to a database.
 	"""
 	
-	pass
+	#def __init__(self, filename):
+		#super().init()
+		#self._chunkdb = ChunkDB(filename)

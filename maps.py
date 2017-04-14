@@ -210,9 +210,9 @@ class Map():
 		
 		#self.load_visible()
 	
-	def apply_changes(self, changes):
+	def commit_diffs(self, diffs):
 		with self.chunkpool as pool:
-			pool.apply_changes(changes)
+			pool.commit_diffs(diffs)
 
 ChunkStyle = namedtuple("ChunkStyle", "string color")
 

@@ -81,23 +81,23 @@ class ChunkDiff():
 		
 		return ChunkDiff.from_dict(diffs)
 
-def jsonify_changes(changes):
-	dchanges = []
-	for chunk in changes:
-		pos = chunk[0]
-		change = chunk[1].to_dict()
-		dchanges.append((pos, change))
+def jsonify_diffs(diffs):
+	ddiffs = []
+	for dchunk in diffs:
+		pos = dchunk[0]
+		ddiff = dchunk[1].to_dict()
+		ddiffs.append((pos, ddiff))
 	
-	return dchanges
+	return ddiffs
 
-def dejsonify_changes(dchanges):
-	changes = []
-	for chunk in dchanges:
-		pos = Position(chunk[0][0], chunk[0][1])
-		change = ChunkDiff.from_dict(chunk[1])
-		changes.append((pos, change))
+def dejsonify_diffs(ddiffs):
+	diffs = []
+	for dchunk in ddiffs:
+		pos = Position(dchunk[0][0], dchunk[0][1])
+		diff = ChunkDiff.from_dict(dchunk[1])
+		diffs.append((pos, diff))
 	
-	return changes
+	return diffs
 
 class Chunk():
 	"""
@@ -125,6 +125,9 @@ class Chunk():
 	def commit_changes(self):
 		self.commit_diff(self._modifications)
 		self._modifications = ChunkDiff()
+	
+	def apply_diff(self, diff):
+		self._modifications.apply(diff)
 	
 	def commit_diff(self, diff):
 		self._content.apply(diff)
@@ -184,15 +187,20 @@ class ChunkPool():
 		self.set(pos, chunk)
 		return chunk
 	
-	def apply_changes(self, changes):
-		for change in changes:
-			pos = change[0]
-			diff = change[1]
+	def apply_diffs(self, diffs):
+		for dchunk in diffs:
+			pos = dchunk[0]
+			diff = dchunk[1]
 			
-			chunk = self.get(pos)
-			if not chunk:
-				chunk = self.create(pos)
+			chunk = self.get(pos) or self.create(pos)
+			chunk.apply_diff(diff)
+	
+	def commit_diffs(self, diffs):
+		for dchunk in diffs:
+			pos = dchunk[0]
+			diff = dchunk[1]
 			
+			chunk = self.get(pos) or self.create(pos)
 			chunk.commit_diff(diff)
 	
 	def commit_changes(self):
