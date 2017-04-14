@@ -1,5 +1,6 @@
 # import from chunks, dbchunkpool
 import json
+import threading
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 from utils import Position
@@ -7,7 +8,7 @@ from chunks import ChunkDiff
 from dbchunkpool import DBChunkPool
 
 pool = DBChunkPool()
-clients = set()
+clients = []
 
 class WotServer(WebSocket):
 	def handle_request_chunks(self, coords):
@@ -22,7 +23,6 @@ class WotServer(WebSocket):
 				self.loaded_chunks.add(pos)
 		
 		message = {"type": "apply-changes", "data": changes}
-		print(f"Message bong sent: {json.dumps(message)}")
 		self.sendMessage(json.dumps(message))
 	
 	def handle_unload_chunks(self, coords):
@@ -34,7 +34,7 @@ class WotServer(WebSocket):
 	def handle_save_changes(self, dchanges):
 		changes = []
 		for chunk in dchanges:
-			print("CHUNK!", chunk)
+			#print("CHUNK!", chunk)
 			pos = Position(chunk[0][0], chunk[0][1])
 			change = ChunkDiff.from_dict(chunk[1])
 			changes.append((pos, change))
@@ -42,54 +42,53 @@ class WotServer(WebSocket):
 		with pool:
 			pool.apply_changes(changes)
 		
-		#with pool:
-			#for chunk in changes:
-				#print("changed content:", pool.get(chunk[0])._content)
-		
 		for client in clients:
-			client.send_changes(changes)
+			if client:
+				client.send_changes(changes)
 	
 	def send_changes(self, changes):
-		print("NORMAL CHANGES:", changes)
 		dchanges = []
 		for chunk in changes:
 			pos = chunk[0]
 			change = chunk[1]
 			if pos in self.loaded_chunks:
 				dchanges.append((pos, change.to_dict()))
-		print("LOADED CHANGES:", dchanges)
 		
 		if dchanges:
-			print("Changes!")
 			message = {"type": "apply-changes", "data": dchanges}
-			print("Changes?")
-			print(f"Message bang sent: {json.dumps(message)}")
 			self.sendMessage(json.dumps(message))
 	
 	def handleMessage(self):
 		message = json.loads(self.data)
-		print(f"message arrived: {message}")
 		if message["type"] == "request-chunks":
 			self.handle_request_chunks(message["data"])
 		elif message["type"] == "unload-chunks":
 			self.handle_unload_chunks(message["data"])
 		elif message["type"] == "save-changes":
 			self.handle_save_changes(message["data"])
-		
-		print("Message received and dealt with.")
-		#changes = []
-		#for chunk in message["data"]:
-			#pass
-		#self.sendMessage(self.data)
 	
 	def handleConnected(self):
-		print(self.address, 'connected')
-		clients.add(self)
 		self.loaded_chunks = set()
+		
+		try:
+			i = clients.index(None)
+			clients[i] = self
+		except ValueError:
+			clients.append(self)
+			i = len(clients) - 1
+		
+		graphstr = "".join(["┯" if j == i else ("│" if v else " ") for j, v in enumerate(clients)])
+		print(f"{graphstr}   {self.address[0]}")
 	
 	def handleClose(self):
-		print(self.address, 'closed')
-		clients.remove(self)
+		i = clients.index(self)
+		
+		graphstr = "".join(["┷" if j == i else ("│" if v else " ") for j, v in enumerate(clients)])
+		print(f"{graphstr}   {self.address[0]}")
+		
+		clients[i] = None
+		while clients and not clients[-1]:
+			clients.pop()
 
 server = SimpleWebSocketServer('', 8000, WotServer)
 server.serveforever()
