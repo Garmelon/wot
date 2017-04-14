@@ -116,7 +116,7 @@ class Client():
 			elif i == "\n":   self.map_.newline()
 			#elif i in string.digits + string.ascii_letters + string.punctuation + " ":
 				#self.map_.write(i)
-			elif isinstance(i, str) and len(i) == 1 and (i not in string.whitespace or i == " "):
+			elif isinstance(i, str) and len(i) == 1 and ord(i) > 31 and (i not in string.whitespace or i == " "):
 				self.map_.write(i)
 	
 	def connection_thread(self):

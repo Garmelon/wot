@@ -35,12 +35,41 @@ class WotServer(WebSocket):
 	def handle_save_changes(self, dchanges):
 		changes = dejsonify_changes(dchanges)
 		
-		with pool:
-			pool.apply_changes(changes)
+		# check whether changes are correct (exclude certain characters)
+		# if not correct, send corrections them back to sender
+		legitimate_changes = []
+		illegitimate_changes = []
+		for chunk in changes:
+			if chunk[1].legitimate():
+				legitimate_changes.append(chunk)
+			else:
+				illegitimate_changes.append(chunk)
 		
-		for client in clients:
-			if client:
-				client.send_changes(changes)
+		if legitimate_changes:
+			with pool:
+				pool.apply_changes(legitimate_changes)
+			
+			for client in clients:
+				if client:
+					client.send_changes(legitimate_changes)
+		
+		if illegitimate_changes:
+			reverse_changes = self.reverse_changes(changes)
+			reverse_dchanges = jsonify_changes(reverse_changes)
+			message = {"type": "apply-changes", "data": reverse_dchanges}
+			self.sendMessage(json.dumps(message))
+	
+	def reverse_changes(self, changes):
+		with pool:
+			reverse_changes = []
+			for chunk in changes:
+				pos = chunk[0]
+				change = chunk[1]
+				real_chunk = pool.get(pos) or pool.create(pos)
+				reverse_change = change.diff(real_chunk.as_diff())
+				reverse_changes.append((pos, reverse_change))
+		
+		return reverse_changes
 	
 	def send_changes(self, changes):
 		changes = [chunk for chunk in changes if chunk[0] in self.loaded_chunks]

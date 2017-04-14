@@ -1,3 +1,4 @@
+import string
 import threading
 import time
 from utils import CHUNK_WIDTH, CHUNK_HEIGHT, Position
@@ -65,6 +66,20 @@ class ChunkDiff():
 	
 	def empty(self):
 		return not bool(self._chars)
+	
+	def legitimate(self):
+		for i, char in self._chars.items():
+			if not (isinstance(char, str) and len(char) == 1 and ord(char) > 31 and (char not in string.whitespace or char == " ")):
+				return False
+		else:
+			return True
+	
+	def diff(self, chunk):
+		diffs = {}
+		for pos, char in self._chars.items():
+			diffs[pos] = chunk._chars.get(pos, " ")
+		
+		return ChunkDiff.from_dict(diffs)
 
 def jsonify_changes(changes):
 	dchanges = []
