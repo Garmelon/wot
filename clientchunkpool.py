@@ -15,15 +15,6 @@ class ClientChunkPool(ChunkPool):
 	def set(self, pos, chunk):
 		super().set(pos, chunk)
 	
-	#def commit_changes(self):
-		#changes = []
-		
-		#for pos, chunk in self._chunks.items():
-			#changes.append((pos, chunk.get_changes()))
-			#chunk.commit_changes()
-		
-		#return changes
-	
 	def apply_changes(self, changes):
 		super().apply_changes(changes)
 		
@@ -52,16 +43,8 @@ class ClientChunkPool(ChunkPool):
 		if coords:
 			self._client.request_chunks(coords)
 	
-	#def unload(self, pos):
-		#raise Exception
-	
 	def unload_list(self, coords):
 		if coords:
 			#self.save_changes()
 			self._client.unload_chunks(coords)
 			super().unload_list(coords)
-
-# What needs to happen differently from the default implementation:
-# loading -> only ask server when necessary
-# unloading -> send message to server
-# unloading -> commit changes when anything is actually unloaded
