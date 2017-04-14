@@ -2,8 +2,6 @@ import threading
 import time
 from utils import CHUNK_WIDTH, CHUNK_HEIGHT, Position
 
-import sys
-
 class ChunkDiff():
 	"""
 	Represents differences between two chunks (changes to be made to a chunk).
@@ -67,7 +65,24 @@ class ChunkDiff():
 	
 	def empty(self):
 		return not bool(self._chars)
+
+def jsonify_changes(changes):
+	dchanges = []
+	for chunk in changes:
+		pos = chunk[0]
+		change = chunk[1].to_dict()
+		dchanges.append((pos, change))
 	
+	return dchanges
+
+def dejsonify_changes(dchanges):
+	changes = []
+	for chunk in dchanges:
+		pos = Position(chunk[0][0], chunk[0][1])
+		change = ChunkDiff.from_dict(chunk[1])
+		changes.append((pos, change))
+	
+	return changes
 
 class Chunk():
 	"""
@@ -116,11 +131,6 @@ class Chunk():
 	def age(self, now=None):
 		return self.last_modified - (now or time.time())
 	
-	#def draw_to(self, x, y, window):
-		#for line in self._content.combine(self._modifications).lines():
-			#window.addstr(y, x, line)
-			#y += 1
-	
 	def lines(self):
 		return self.as_diff().lines()
 	
@@ -161,7 +171,6 @@ class ChunkPool():
 	
 	def apply_changes(self, changes):
 		for change in changes:
-			#pos = Position(change[0][0], change[0][1])
 			pos = change[0]
 			diff = change[1]
 			
@@ -169,9 +178,7 @@ class ChunkPool():
 			if not chunk:
 				chunk = self.create(pos)
 			
-			sys.stderr.write(f"Previous at {pos}: {chunk._content}\n")
 			chunk.commit_diff(diff)
-			sys.stderr.write(f"Afterwrd at {pos}: {chunk._content}\n")
 	
 	def commit_changes(self):
 		changes = []

@@ -4,7 +4,7 @@ import threading
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 from utils import Position
-from chunks import ChunkDiff
+from chunks import ChunkDiff, jsonify_changes, dejsonify_changes
 from dbchunkpool import DBChunkPool
 
 pool = DBChunkPool()
@@ -17,12 +17,12 @@ class WotServer(WebSocket):
 			for coor in coords:
 				pos = Position(coor[0], coor[1])
 				change = pool.get(pos) or pool.create(pos)
-				dchange = change.as_diff().to_dict()
-				changes.append((pos, dchange))
+				changes.append((pos, change.as_diff()))
 				
 				self.loaded_chunks.add(pos)
 		
-		message = {"type": "apply-changes", "data": changes}
+		dchanges = jsonify_changes(changes)
+		message = {"type": "apply-changes", "data": dchanges}
 		self.sendMessage(json.dumps(message))
 	
 	def handle_unload_chunks(self, coords):
@@ -32,12 +32,7 @@ class WotServer(WebSocket):
 				self.loaded_chunks.remove(pos)
 	
 	def handle_save_changes(self, dchanges):
-		changes = []
-		for chunk in dchanges:
-			#print("CHUNK!", chunk)
-			pos = Position(chunk[0][0], chunk[0][1])
-			change = ChunkDiff.from_dict(chunk[1])
-			changes.append((pos, change))
+		changes = dejsonify_changes(dchanges)
 		
 		with pool:
 			pool.apply_changes(changes)
@@ -47,12 +42,8 @@ class WotServer(WebSocket):
 				client.send_changes(changes)
 	
 	def send_changes(self, changes):
-		dchanges = []
-		for chunk in changes:
-			pos = chunk[0]
-			change = chunk[1]
-			if pos in self.loaded_chunks:
-				dchanges.append((pos, change.to_dict()))
+		changes = [chunk for chunk in changes if chunk[0] in self.loaded_chunks]
+		dchanges = jsonify_changes(changes)
 		
 		if dchanges:
 			message = {"type": "apply-changes", "data": dchanges}
@@ -84,7 +75,8 @@ class WotServer(WebSocket):
 		i = clients.index(self)
 		
 		graphstr = "".join(["┷" if j == i else ("│" if v else " ") for j, v in enumerate(clients)])
-		print(f"{graphstr}   {self.address[0]}")
+		print(graphstr)
+		#print(f"{graphstr}   {self.address[0]}")
 		
 		clients[i] = None
 		while clients and not clients[-1]:
