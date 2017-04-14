@@ -13,8 +13,8 @@ class Map():
 	def __init__(self, width, height, chunkpool, client):
 		self._lock = threading.RLock()
 		
-		self.chunkpreload = 0 # preload chunks in this radius (they will count as "visible")
-		self.chunkunload = 5 # don't unload chunks within this radius
+		self.chunkpreload = 1 # preload chunks in this radius (they will count as "visible")
+		self.chunkunload = 10 # don't unload chunks within this radius
 		self.cursorpadding = 2
 		self.worldx = -self.cursorpadding
 		self.worldy = -self.cursorpadding
@@ -28,8 +28,8 @@ class Map():
 		
 		self.alternating_colors = False
 		
-		self._pad = curses.newpad(5, 5)
-		self.resize(width, height)
+		self._pad = curses.newpad(1, 1) # size doesn't matter (heh), since it resizes
+		self.resize(width, height)      # directly afterwards to fit the width+height
 		
 		if curses.has_colors():
 			curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE) # chunk not loaded
