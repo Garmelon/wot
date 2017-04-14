@@ -8,7 +8,7 @@ import websocket
 from websocket import WebSocketException as WSException
 
 from maps import Map, ChunkMap
-from chunks import ChunkDiff
+from chunks import ChunkDiff, jsonify_changes, dejsonify_changes
 from utils import Position
 from clientchunkpool import ClientChunkPool
 
@@ -136,12 +136,7 @@ class Client():
 	def handle_json(self, message):
 		sys.stderr.write(f"message: {message}\n")
 		if message["type"] == "apply-changes":
-			changes = []
-			for chunk in message["data"]:
-				pos = Position(chunk[0][0], chunk[0][1])
-				change = ChunkDiff.from_dict(chunk[1])
-				changes.append((pos, change))
-			
+			changes = dejsonify_changes(message["data"])
 			sys.stderr.write(f"Changes to apply: {changes}\n")
 			self.map_.apply_changes(changes)
 	
@@ -155,14 +150,6 @@ class Client():
 		#sys.stderr.write(f"requested chunks: {coords}\n")
 		message = {"type": "request-chunks", "data": coords}
 		self._ws.send(json.dumps(message))
-		
-		#def execute():
-			#changes = [(pos, ChunkDiff()) for pos in coords]
-			#with self.pool as pool:
-				#pool.apply_changes(changes)
-		
-		#tx = threading.Timer(1, execute)
-		#tx.start()
 	
 	def unload_chunks(self, coords):
 		#sys.stderr.write(f"unloading chunks: {coords}\n")
@@ -171,6 +158,7 @@ class Client():
 	
 	def send_changes(self, changes):
 		#sys.stderr.write(f"sending changes: {changes}\n")
+		changes = jsonify_changes(changes)
 		message = {"type": "save-changes", "data": changes}
 		self._ws.send(json.dumps(message))
 

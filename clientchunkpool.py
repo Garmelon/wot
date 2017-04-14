@@ -43,13 +43,10 @@ class ClientChunkPool(ChunkPool):
 	
 	def save_changes(self):
 		changes = self.commit_changes()
-		dchanges = []
-		for pos, change in changes:
-			dchange = change.to_dict()
-			if dchange:
-				dchanges.append((pos, dchange))
-		if dchanges:
-			self._client.send_changes(dchanges)
+		changes = [chunk for chunk in changes if not chunk[1].empty()]
+		
+		if changes:
+			self._client.send_changes(changes)
 	
 	def load(self, pos):
 		raise Exception
