@@ -32,7 +32,7 @@ class Client():
 				self.address,
 				enable_multithread=True
 			)
-		except ConnectionRefusedError:
+		except:
 			sys.stderr.write(f"Could not connect to server: {self.address!r}\n")
 			return
 		
@@ -82,7 +82,6 @@ class Client():
 	def input_thread(self, scr):
 		while True:
 			i = scr.get_wch()
-			#sys.stderr.write(f"input: {i!r}\n")
 			
 			if   i == "\x1b": self.stop()
 			elif i == 266: # F2
@@ -118,10 +117,7 @@ class Client():
 			#elif i in string.digits + string.ascii_letters + string.punctuation + " ":
 				#self.map_.write(i)
 			elif isinstance(i, str) and len(i) == 1 and (i not in string.whitespace or i == " "):
-				#sys.stderr.write(f"{i!r}\n")
 				self.map_.write(i)
-			
-			#else: sys.stderr.write(repr(i) + "\n")
 	
 	def connection_thread(self):
 		while True:
@@ -134,30 +130,24 @@ class Client():
 				return
 	
 	def handle_json(self, message):
-		sys.stderr.write(f"message: {message}\n")
 		if message["type"] == "apply-changes":
 			changes = dejsonify_changes(message["data"])
-			sys.stderr.write(f"Changes to apply: {changes}\n")
 			self.map_.apply_changes(changes)
 	
 	def stop(self):
-		sys.stderr.write("Stopping!\n")
 		self.stopping = True
 		self._ws.close()
 		self.redraw()
 
 	def request_chunks(self, coords):
-		#sys.stderr.write(f"requested chunks: {coords}\n")
 		message = {"type": "request-chunks", "data": coords}
 		self._ws.send(json.dumps(message))
 	
 	def unload_chunks(self, coords):
-		#sys.stderr.write(f"unloading chunks: {coords}\n")
 		message = {"type": "unload-chunks", "data": coords}
 		self._ws.send(json.dumps(message))
 	
 	def send_changes(self, changes):
-		#sys.stderr.write(f"sending changes: {changes}\n")
 		changes = jsonify_changes(changes)
 		message = {"type": "save-changes", "data": changes}
 		self._ws.send(json.dumps(message))

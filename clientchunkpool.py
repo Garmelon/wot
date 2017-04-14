@@ -1,8 +1,6 @@
 import threading
 from chunks import ChunkPool
 
-import sys
-
 class ClientChunkPool(ChunkPool):
 	"""
 	A ChunkPool that requests/loads chunks from a client.
@@ -32,10 +30,8 @@ class ClientChunkPool(ChunkPool):
 		self._client.redraw()
 	
 	def save_changes_delayed(self):
-		sys.stderr.write("Pre-HEHEHE\n")
 		if not self._save_thread:
 			def threadf():
-				sys.stderr.write("HEHEHE\n")
 				self.save_changes()
 				self._save_thread = None
 			self._save_thread = threading.Timer(.25, threadf)
