@@ -1,5 +1,6 @@
 # import from chunks, dbchunkpool
 import json
+import sys
 import threading
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
@@ -82,5 +83,26 @@ class WotServer(WebSocket):
 		while clients and not clients[-1]:
 			clients.pop()
 
-server = SimpleWebSocketServer('', 8000, WotServer)
-server.serveforever()
+def main(argv):
+	if len(argv) > 2:
+		print("Usage:")
+		print(f"  {argv[0]} [port]")
+		print("  default port: 8000")
+		return
+	elif len(argv) > 1:
+		try:
+			port = int(argv[1])
+		except ValueError:
+			print("Invalid port")
+			return
+	else:
+		port = 8000
+	
+	server = SimpleWebSocketServer('', port, WotServer)
+	try:
+		server.serveforever()
+	except KeyboardInterrupt:
+		print("Stopped.")
+
+if __name__ == "__main__":
+	main(sys.argv)
