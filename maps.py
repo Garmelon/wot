@@ -297,17 +297,14 @@ class ChunkMap():
 	def type_of(self, pos, chunk):
 		if chunk.modified():
 			return "modified"
-		
-		if pos in self.map_.visible_chunk_coords():
-			return "visible"
-		
-		if self.map_._unload_condition(pos, chunk):
+		elif self.map_._unload_condition(pos, chunk):
 			return "unload"
-		
-		if chunk.empty():
+		elif not chunk.empty():
+			return "normal"
+		elif pos in self.map_.visible_chunk_coords():
+			return "visible"
+		else:
 			return "empty"
-		
-		return "normal"
 	
 	#def move(self, x, y, corner):
 		#pass
