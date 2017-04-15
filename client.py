@@ -4,6 +4,7 @@ import os
 import string
 import sys
 import threading
+import time
 import websocket
 from websocket import WebSocketException as WSException
 
@@ -13,17 +14,19 @@ from utils import Position
 from clientchunkpool import ClientChunkPool
 
 class Client():
-	def __init__(self, address):
+	def __init__(self, address, logfile=None):
 		self.stopping = False
+		
+		self.map_ = None
+		self.chunkmap = None
 		self.chunkmap_active = False
 		
 		self.address = f"ws://{address}/"
 		self._drawevent = threading.Event()
 		self.pool = ClientChunkPool(self)
-		#self.map_ = Map(sizex, sizey, self.pool)
-		#self.chunkmap = Chunkmap(sizex, sizey, self.pool) # size changeable by +/-?
 		
-		#self.sock = socket.Socket(...)
+		self.logfile = logfile
+		self.log_messages = []
 	
 	def launch(self, stdscr):
 		# connect to server
@@ -61,7 +64,7 @@ class Client():
 		while not self.stopping:
 			self._drawevent.wait()
 			self._drawevent.clear()
-			stdscr.noutrefresh()
+			
 			with self.map_ as m:
 				m.draw()
 				
@@ -75,9 +78,22 @@ class Client():
 			#m.noutrefresh()
 			
 			curses.doupdate()
+		
+		if self.logfile:
+			self.save_log(self.logfile)
 	
 	def redraw(self):
 		self._drawevent.set()
+	
+	def log(self, message):
+		if self.logfile:
+			self.log_messages.append(message)
+	
+	def save_log(self, filename):
+		with open(filename, "w") as f:
+			f.write(f"[[[ {int(time.time())} ]]]\n")
+			for msg in self.log_messages:
+				f.write(msg + "\n")
 	
 	def input_thread(self, scr):
 		while True:
@@ -89,6 +105,11 @@ class Client():
 				self.redraw()
 			elif i == 267: # F3
 				self.map_.alternating_colors = not self.map_.alternating_colors
+				self.redraw()
+			elif i == 268:
+				self.stdscr_visible = not self.stdscr_visible
+				if self.stdscr_visible: self.stdscr.redrawwin()
+				else: self.map_.redraw()
 				self.redraw()
 			elif i == 269: # F5
 				self.map_.redraw()
@@ -118,6 +139,8 @@ class Client():
 				#self.map_.write(i)
 			elif isinstance(i, str) and len(i) == 1 and ord(i) > 31 and (i not in string.whitespace or i == " "):
 				self.map_.write(i)
+			
+			self.log(f"K: {i!r}")
 	
 	def connection_thread(self):
 		while True:
@@ -153,14 +176,17 @@ class Client():
 		self._ws.send(json.dumps(message))
 
 def main(argv):
-	if len(argv) != 2:
+	if len(argv) == 2:
+		client = Client(argv[1])
+	elif len(argv) == 3:
+		client = Client(argv[1], argv[2])
+	else:
 		print("Usage:")
-		print(f"  {argv[0]} address")
+		print(f"  {argv[0]} address [logfile]")
 		return
 	
 	os.environ.setdefault('ESCDELAY', '25') # only a 25 millisecond delay
 	
-	client = Client(argv[1])
 	curses.wrapper(client.launch)
 
 if __name__ == "__main__":
