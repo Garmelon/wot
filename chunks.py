@@ -112,8 +112,7 @@ class Chunk():
 		self._content = ChunkDiff()
 		self._modifications = ChunkDiff()
 		
-		self.last_modified = None
-		self.touch()
+		self.last_modified = 0
 	
 	def set(self, x, y, character):
 		self._modifications.set(x, y, character)
@@ -151,7 +150,7 @@ class Chunk():
 		self.last_modified = now or time.time()
 	
 	def age(self, now=None):
-		return self.last_modified - (now or time.time())
+		return (now or time.time()) - self.last_modified
 	
 	def lines(self):
 		return self.as_diff().lines()
@@ -195,7 +194,8 @@ class ChunkPool():
 		for dchunk in diffs:
 			pos = dchunk[0]
 			diff = dchunk[1]
-			chunk = self.load(pos)
+			chunk = self.get(pos) or self.create(pos)
+			#chunk = self.load(pos)
 			
 			if not diff.empty():
 				chunk.apply_diff(diff)
@@ -204,7 +204,8 @@ class ChunkPool():
 		for dchunk in diffs:
 			pos = dchunk[0]
 			diff = dchunk[1]
-			chunk = self.load(pos)
+			chunk = self.get(pos) or self.create(pos)
+			#chunk = self.load(pos)
 			
 			if not diff.empty():
 				chunk.commit_diff(diff)
@@ -213,8 +214,9 @@ class ChunkPool():
 		changes = []
 		
 		for pos, chunk in self._chunks.items():
-			changes.append((pos, chunk.get_changes()))
-			chunk.commit_changes()
+			if chunk.modified():
+				changes.append((pos, chunk.get_changes()))
+				chunk.commit_changes()
 		
 		return changes
 	
@@ -222,7 +224,9 @@ class ChunkPool():
 		self.commit_changes()
 	
 	def load(self, pos):
-		return self.get(pos) or self.create(pos)
+		if not self.get(pos):
+			self.create(pos)
+		#return self.get(pos) or self.create(pos)
 	
 	def load_list(self, coords):
 		for pos in coords:

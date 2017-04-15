@@ -8,16 +8,17 @@ from utils import Position
 from chunks import ChunkDiff, jsonify_diffs, dejsonify_diffs
 from dbchunkpool import DBChunkPool
 
-pool = DBChunkPool()
-clients = []
+from chunks import ChunkPool
 
 class WotServer(WebSocket):
 	def handle_request_chunks(self, coords):
 		diffs = []
-		with pool:
-			for coor in coords:
-				pos = Position(coor[0], coor[1])
-				chunk = pool.load(pos)
+		with self.pool as pool:
+			coords = [Position(coor[0], coor[1]) for coor in coords]
+			pool.load_list(coords)
+			
+			for pos in coords:
+				chunk = pool.get(pos)
 				diffs.append((pos, chunk.as_diff()))
 				
 				self.loaded_chunks.add(pos)
@@ -46,10 +47,10 @@ class WotServer(WebSocket):
 				illegitimate_diffs.append(dchunk)
 		
 		if legitimate_diffs:
-			with pool:
+			with self.pool as pool:
 				pool.apply_diffs(legitimate_diffs)
 			
-			for client in clients:
+			for client in self.clients:
 				if client:
 					client.send_changes(legitimate_diffs)
 		
@@ -60,12 +61,16 @@ class WotServer(WebSocket):
 			self.sendMessage(json.dumps(message))
 	
 	def reverse_diffs(self, diffs):
-		with pool:
+		coords = [dchunk[0] for dchunk in diffs]
+		
+		with self.pool as pool:
+			pool.load_list(coords)
+			
 			reverse_diffs = []
 			for dchunk in diffs:
 				pos = dchunk[0]
 				diff = dchunk[1]
-				chunk = pool.load(pos)
+				chunk = pool.get(pos)
 				reverse_diff = diff.diff(chunk.as_diff())
 				reverse_diffs.append((pos, reverse_diff))
 		
@@ -92,45 +97,55 @@ class WotServer(WebSocket):
 		self.loaded_chunks = set()
 		
 		try:
-			i = clients.index(None)
-			clients[i] = self
+			i = self.clients.index(None)
+			self.clients[i] = self
 		except ValueError:
-			clients.append(self)
-			i = len(clients) - 1
+			self.clients.append(self)
+			i = len(self.clients) - 1
 		
-		graphstr = "".join(["┯" if j == i else ("│" if v else " ") for j, v in enumerate(clients)])
-		print(f"{graphstr}   {self.address[0]}")
+		graphstr = "".join(["┯" if j == i else ("│" if v else " ") for j, v in enumerate(self.clients)])
+		print(f"{graphstr}  {self.address[0]}")
 	
 	def handleClose(self):
-		i = clients.index(self)
+		i = self.clients.index(self)
 		
-		graphstr = "".join(["┷" if j == i else ("│" if v else " ") for j, v in enumerate(clients)])
+		graphstr = "".join(["┷" if j == i else ("│" if v else " ") for j, v in enumerate(self.clients)])
 		print(graphstr)
 		#print(f"{graphstr}   {self.address[0]}")
 		
-		clients[i] = None
-		while clients and not clients[-1]:
-			clients.pop()
+		self.clients[i] = None
+		while self.clients and not self.clients[-1]:
+			self.clients.pop()
 
 def main(argv):
-	if len(argv) > 2:
+	if len(argv) == 1 or len(argv) > 3:
 		print("Usage:")
-		print(f"  {argv[0]} [port]")
+		print(f"  {argv[0]} dbfile [port]")
 		print("  default port: 8000")
 		return
-	elif len(argv) > 1:
+	
+	dbfile = argv[1]
+	
+	if len(argv) >= 3:
 		try:
-			port = int(argv[1])
+			port = int(argv[2])
 		except ValueError:
 			print("Invalid port")
 			return
 	else:
 		port = 8000
 	
+	print("Connecting to db")
+	WotServer.pool = DBChunkPool(dbfile)
+	WotServer.clients = []
+	
 	server = SimpleWebSocketServer('', port, WotServer)
 	try:
 		server.serveforever()
 	except KeyboardInterrupt:
+		print("")
+		print("Saving recent changes.")
+		WotServer.pool.save_changes()
 		print("Stopped.")
 
 if __name__ == "__main__":

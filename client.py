@@ -14,14 +14,14 @@ from utils import Position
 from clientchunkpool import ClientChunkPool
 
 class Client():
-	def __init__(self, address, logfile=None):
+	def __init__(self, address, port=None, logfile=None):
 		self.stopping = False
 		
 		self.map_ = None
 		self.chunkmap = None
 		self.chunkmap_active = False
 		
-		self.address = f"ws://{address}/"
+		self.address = f"ws://{address}:{port}/"
 		self._drawevent = threading.Event()
 		self.pool = ClientChunkPool(self)
 		
@@ -171,17 +171,32 @@ class Client():
 		self._ws.send(json.dumps(message))
 
 def main(argv):
-	if len(argv) == 2:
-		client = Client(argv[1])
-	elif len(argv) == 3:
-		client = Client(argv[1], argv[2])
-	else:
+	if len(argv) == 1 or len(argv) > 4:
 		print("Usage:")
-		print(f"  {argv[0]} address [logfile]")
+		print(f"  {argv[0]} address [port [logfile]]")
+		print("  default port: 8000")
 		return
+	
+	address = argv[1]
+	
+	if len(argv) >= 3:
+		try:
+			port = int(argv[2])
+		except ValueError:
+			print("Invalid port")
+			return
+	else:
+		port = 8000
+	
+	# only for debugging, will be removed later
+	if len(argv) >= 4:
+		logfile = argv[3]
+	else:
+		logfile = None
 	
 	os.environ.setdefault('ESCDELAY', '25') # only a 25 millisecond delay
 	
+	client = Client(address, port, logfile)
 	curses.wrapper(client.launch)
 
 if __name__ == "__main__":

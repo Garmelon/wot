@@ -36,6 +36,9 @@ class ClientChunkPool(ChunkPool):
 		if diffs:
 			self._client.send_changes(diffs)
 	
+	def load(self, pos):
+		raise Exception
+	
 	def load_list(self, coords):
 		coords = [pos for pos in coords if pos not in self._chunks]
 		if coords:
@@ -43,6 +46,6 @@ class ClientChunkPool(ChunkPool):
 	
 	def unload_list(self, coords):
 		if coords:
-			#self.save_changes()
 			self._client.unload_chunks(coords)
-			super().unload_list(coords)
+		
+		super().unload_list(coords)

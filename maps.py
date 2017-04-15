@@ -144,6 +144,7 @@ class Map():
 	def delete(self):
 		with self.chunkpool as pool:
 			chunk = pool.get(Position(chunkx(self.cursorx-1), chunky(self.cursory)))
+			
 			if chunk:
 				chunk.delete(inchunkx(self.cursorx-1), inchunky(self.cursory))
 				pool.save_changes_delayed()
