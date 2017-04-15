@@ -17,7 +17,7 @@ class WotServer(WebSocket):
 		with pool:
 			for coor in coords:
 				pos = Position(coor[0], coor[1])
-				chunk = pool.get(pos) or pool.create(pos)
+				chunk = pool.load(pos)
 				diffs.append((pos, chunk.as_diff()))
 				
 				self.loaded_chunks.add(pos)
@@ -65,7 +65,7 @@ class WotServer(WebSocket):
 			for dchunk in diffs:
 				pos = dchunk[0]
 				diff = dchunk[1]
-				chunk = pool.get(pos) or pool.create(pos)
+				chunk = pool.load(pos)
 				reverse_diff = diff.diff(chunk.as_diff())
 				reverse_diffs.append((pos, reverse_diff))
 		

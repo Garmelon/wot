@@ -112,6 +112,7 @@ class Chunk():
 		self._content = ChunkDiff()
 		self._modifications = ChunkDiff()
 		
+		self.last_modified = None
 		self.touch()
 	
 	def set(self, x, y, character):
@@ -125,9 +126,11 @@ class Chunk():
 	def commit_changes(self):
 		self.commit_diff(self._modifications)
 		self._modifications = ChunkDiff()
+		self.touch()
 	
 	def apply_diff(self, diff):
 		self._modifications.apply(diff)
+		self.touch()
 	
 	def commit_diff(self, diff):
 		self._content.apply(diff)
@@ -136,6 +139,7 @@ class Chunk():
 	
 	def drop_changes(self):
 		self._modifications = ChunkDiff()
+		self.touch()
 	
 	def get_changes(self):
 		return self._modifications
@@ -191,17 +195,19 @@ class ChunkPool():
 		for dchunk in diffs:
 			pos = dchunk[0]
 			diff = dchunk[1]
+			chunk = self.load(pos)
 			
-			chunk = self.get(pos) or self.create(pos)
-			chunk.apply_diff(diff)
+			if not diff.empty():
+				chunk.apply_diff(diff)
 	
 	def commit_diffs(self, diffs):
 		for dchunk in diffs:
 			pos = dchunk[0]
 			diff = dchunk[1]
+			chunk = self.load(pos)
 			
-			chunk = self.get(pos) or self.create(pos)
-			chunk.commit_diff(diff)
+			if not diff.empty():
+				chunk.commit_diff(diff)
 	
 	def commit_changes(self):
 		changes = []
@@ -216,13 +222,11 @@ class ChunkPool():
 		self.commit_changes()
 	
 	def load(self, pos):
-		if not pos in self._chunks:
-			self.create(pos)
+		return self.get(pos) or self.create(pos)
 	
 	def load_list(self, coords):
 		for pos in coords:
-			if pos not in self._chunks:
-				self.load(pos)
+			self.load(pos)
 	
 	def unload(self, pos):
 		if pos in self._chunks:
