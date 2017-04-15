@@ -90,7 +90,7 @@ class Client():
 			self.log_messages.append(message)
 	
 	def save_log(self, filename):
-		with open(filename, "w") as f:
+		with open(filename, "a") as f:
 			f.write(f"[[[ {int(time.time())} ]]]\n")
 			for msg in self.log_messages:
 				f.write(msg + "\n")
