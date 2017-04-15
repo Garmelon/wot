@@ -100,13 +100,13 @@ class Client():
 			i = scr.get_wch()
 			
 			if   i == "\x1b": self.stop()
-			elif i == 266: # F2
+			elif i == curses.KEY_F2:
 				self.chunkmap_active = not self.chunkmap_active
 				self.redraw()
-			elif i == 267: # F3
+			elif i == curses.KEY_F3:
 				self.map_.alternating_colors = not self.map_.alternating_colors
 				self.redraw()
-			elif i == 269: # F5
+			elif i == curses.KEY_F5:
 				self.map_.redraw()
 			# scrolling the map (10 vertical, 20 horizontal)
 			elif i == 569: self.map_.scroll(0, -10) # ctrl + up
@@ -118,15 +118,15 @@ class Client():
 			elif self.chunkmap_active: pass
 		
 			# quick cursor movement (5 vertical, 10 horizontal)
-			elif i == 337: self.map_.move_cursor(0, -5)  # shift + up
-			elif i == 336: self.map_.move_cursor(0, 5)   # shift + down
-			elif i == 393: self.map_.move_cursor(-10, 0) # shift + left
-			elif i == 402: self.map_.move_cursor(10, 0)  # shift + right
+			elif i == curses.KEY_SR: self.map_.move_cursor(0, -5)  # shift + up, 337
+			elif i == curses.KEY_SF: self.map_.move_cursor(0, 5)   # shift + down, 336
+			elif i == curses.KEY_SLEFT : self.map_.move_cursor(-10, 0) # shift + left, 393
+			elif i == curses.KEY_SRIGHT: self.map_.move_cursor(10, 0)  # shift + right, 402
 			# normal cursor movement
-			elif i == 259: self.map_.move_cursor(0, -1) # up
-			elif i == 258: self.map_.move_cursor(0, 1)  # down
-			elif i == 260: self.map_.move_cursor(-1, 0) # left
-			elif i == 261: self.map_.move_cursor(1, 0)  # right
+			elif i == curses.KEY_UP   : self.map_.move_cursor(0, -1)
+			elif i == curses.KEY_DOWN : self.map_.move_cursor(0, 1)
+			elif i == curses.KEY_LEFT : self.map_.move_cursor(-1, 0)
+			elif i == curses.KEY_RIGHT: self.map_.move_cursor(1, 0)
 			# edit world
 			elif i == "\x7f": self.map_.delete()
 			elif i == "\n":   self.map_.newline()
