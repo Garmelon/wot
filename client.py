@@ -106,11 +106,6 @@ class Client():
 			elif i == 267: # F3
 				self.map_.alternating_colors = not self.map_.alternating_colors
 				self.redraw()
-			elif i == 268:
-				self.stdscr_visible = not self.stdscr_visible
-				if self.stdscr_visible: self.stdscr.redrawwin()
-				else: self.map_.redraw()
-				self.redraw()
 			elif i == 269: # F5
 				self.map_.redraw()
 			# scrolling the map (10 vertical, 20 horizontal)
