@@ -109,10 +109,10 @@ class Client():
 			elif i == curses.KEY_F5:
 				self.map_.redraw()
 			# scrolling the map (10 vertical, 20 horizontal)
-			elif i == 569: self.map_.scroll(0, -10) # ctrl + up
-			elif i == 528: self.map_.scroll(0, 10)  # ctrl + down
-			elif i == 548: self.map_.scroll(-20, 0) # ctrl + left
-			elif i == 563: self.map_.scroll(20, 0)  # ctrl + right
+			elif i in [569,566]: self.map_.scroll(0, -10) # ctrl + up
+			elif i in [528,525]: self.map_.scroll(0, 10)  # ctrl + down
+			elif i in [548,545]: self.map_.scroll(-20, 0) # ctrl + left
+			elif i in [563,560]: self.map_.scroll(20, 0)  # ctrl + right
 			
 			# break here if chunkmap is shown: Don't allow for cursor movement or input
 			elif self.chunkmap_active: pass
