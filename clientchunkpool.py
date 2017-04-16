@@ -31,7 +31,7 @@ class ClientChunkPool(ChunkPool):
 	def save_changes(self):
 		diffs = self.commit_changes()
 		# filter out empty changes/chunks
-		diffs = [dchunk for dchunk in diffs if not dchunk[1].empty()]
+		diffs = {pos: diff for pos, diff in diffs.items() if not diff.empty()}
 		
 		if diffs:
 			self._client.send_changes(diffs)

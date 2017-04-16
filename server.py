@@ -12,14 +12,16 @@ from chunks import ChunkPool
 
 class WotServer(WebSocket):
 	def handle_request_chunks(self, coords):
-		diffs = []
+		diffs = {}
+		coords = [Position(coor[0], coor[1]) for coor in coords]
+		
 		with self.pool as pool:
-			coords = [Position(coor[0], coor[1]) for coor in coords]
 			pool.load_list(coords)
 			
 			for pos in coords:
 				chunk = pool.get(pos)
-				diffs.append((pos, chunk.as_diff()))
+				diff = chunk.as_diff()
+				diffs[pos] = diff
 				
 				self.loaded_chunks.add(pos)
 		
@@ -38,16 +40,17 @@ class WotServer(WebSocket):
 		
 		# check whether changes are correct (exclude certain characters)
 		# if not correct, send corrections them back to sender
-		legitimate_diffs = []
-		illegitimate_diffs = []
-		for dchunk in diffs:
-			if dchunk[1].legitimate():
-				legitimate_diffs.append(dchunk)
+		legitimate_diffs = {}
+		illegitimate_diffs = {}
+		for pos, diff in diffs.items():
+			if diff.legitimate():
+				legitimate_diffs[pos] = diff
 			else:
-				illegitimate_diffs.append(dchunk)
+				illegitimate_diffs[pos] = diff
 		
 		if legitimate_diffs:
 			with self.pool as pool:
+				pool.load_list(legitimate_diffs.keys())
 				pool.apply_diffs(legitimate_diffs)
 			
 			for client in self.clients:
@@ -61,23 +64,19 @@ class WotServer(WebSocket):
 			self.sendMessage(json.dumps(message))
 	
 	def reverse_diffs(self, diffs):
-		coords = [dchunk[0] for dchunk in diffs]
-		
 		with self.pool as pool:
-			pool.load_list(coords)
+			pool.load_list(diffs.keys())
 			
-			reverse_diffs = []
-			for dchunk in diffs:
-				pos = dchunk[0]
-				diff = dchunk[1]
+			reverse_diffs = {}
+			for pos, diff in diffs.items():
 				chunk = pool.get(pos)
 				reverse_diff = diff.diff(chunk.as_diff())
-				reverse_diffs.append((pos, reverse_diff))
+				reverse_diffs[pos] = reverse_diff
 		
 		return reverse_diffs
 	
 	def send_changes(self, diffs):
-		diffs = [dchunk for dchunk in diffs if dchunk[0] in self.loaded_chunks]
+		diffs = {pos: diff for pos, diff in diffs.items() if pos in self.loaded_chunks}
 		ddiffs = jsonify_diffs(diffs)
 		
 		if ddiffs:
@@ -146,6 +145,8 @@ def main(argv):
 		print("")
 		print("Saving recent changes.")
 		WotServer.pool.save_changes()
+		print("Cleaning up empty chunks from db.")
+		WotServer.pool.remove_empty()
 		print("Stopped.")
 
 if __name__ == "__main__":
