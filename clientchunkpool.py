@@ -11,6 +11,8 @@ class ClientChunkPool(ChunkPool):
 		
 		self._client = client
 		self._save_thread = None
+		
+		self.save_changes_delay = .1
 	
 	def set(self, pos, chunk):
 		super().set(pos, chunk)
@@ -25,7 +27,7 @@ class ClientChunkPool(ChunkPool):
 			def threadf():
 				self.save_changes()
 				self._save_thread = None
-			self._save_thread = threading.Timer(.25, threadf)
+			self._save_thread = threading.Timer(self.save_changes_delay, threadf)
 			self._save_thread.start()
 	
 	def save_changes(self):
