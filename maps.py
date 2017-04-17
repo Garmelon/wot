@@ -16,12 +16,12 @@ class Map():
 		self.chunkpreload = 1 # preload chunks in this radius (they will count as "visible")
 		self.chunkunload = 10 # don't unload chunks within this radius
 		self.cursorpadding = 2
-		self.worldx = -self.cursorpadding
-		self.worldy = -self.cursorpadding
 		self.cursorx = 0
 		self.cursory = 0
 		self.lastcurx = self.cursorx
 		self.lastcury = self.cursory
+		self.worldx = -width//3
+		self.worldy = -height//3
 		
 		self.chunkpool = chunkpool
 		self.client = client
