@@ -223,18 +223,16 @@ class ChunkMap():
 	Might show additional details too (i.e. if a chunk has been modified).
 	"""
 	
-	styles = {
-		"empty":    ChunkStyle("()", 3),
-		"normal":   ChunkStyle("[]", 4),
-		"unload":   ChunkStyle("{}", 5),
-		"visible":  ChunkStyle("##", 6),
-		"modified": ChunkStyle("!!", 7),
-	}
+	STYLE_EMPTY    = ChunkStyle("()", 3)
+	STYLE_NORMAL   = ChunkStyle("[]", 4)
+	STYLE_UNLOAD   = ChunkStyle("{}", 5)
+	STYLE_VISIBLE  = ChunkStyle("##", 6)
+	STYLE_MODIFIED = ChunkStyle("!!", 7)
 	
 	def __init__(self, map_):
 		self.map_ = map_
 		self.chunkpool = map_.chunkpool
-		self.corner = "ur" # upper right
+		#self.corner = "ur" # upper right
 		
 		#minx, maxx, miny, maxy = self.get_min_max()
 		#self.win = curses.newwin(maxy-miny+2, maxx-minx+2)
@@ -266,19 +264,19 @@ class ChunkMap():
 			self.win.border()
 			
 			for pos, chunk in pool._chunks.items():
-				tp = self.type_of(pos, chunk)
+				style = self.style_of(pos, chunk)
 				if curses.has_colors():
 					self.win.addstr(
 						pos.y - miny + 1,
 						2*(pos.x - minx) + 1,
 						"  ",
-						curses.color_pair(self.styles[tp].color)
+						curses.color_pair(style.color)
 					)
 				else:
 					self.win.addstr(
 						pos.y - miny + 1,
 						2*(pos.x - minx) + 1,
-						self.styles[tp].string
+						style.string
 					)
 			
 			self.win.noutrefresh()
@@ -295,17 +293,17 @@ class ChunkMap():
 		minx, maxx, miny, maxy = self.get_min_max()
 		return maxx - minx, maxy - miny
 	
-	def type_of(self, pos, chunk):
+	def style_of(self, pos, chunk):
 		if chunk.modified():
-			return "modified"
+			return self.STYLE_MODIFIED
 		elif self.map_._unload_condition(pos, chunk):
-			return "unload"
+			return self.STYLE_UNLOAD
 		elif not chunk.empty():
-			return "normal"
+			return self.STYLE_NORMAL
 		elif pos in self.map_.visible_chunk_coords():
-			return "visible"
+			return self.STYLE_VISIBLE
 		else:
-			return "empty"
+			return self.STYLE_EMPTY
 	
 	#def move(self, x, y, corner):
 		#pass
