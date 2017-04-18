@@ -26,7 +26,8 @@ class Client():
 		self.chunkmap = None
 		self.chunkmap_active = False
 		
-		self.address = f"ws://{address}:{port}/"
+		#self.address = f"ws://{address}:{port}/"
+		self.address = "ws://{}:{}/".format(address, port)
 		self._drawevent = threading.Event()
 		self.pool = ClientChunkPool(self)
 		
@@ -41,7 +42,8 @@ class Client():
 				enable_multithread=True
 			)
 		except:
-			sys.stderr.write(f"Could not connect to server: {self.address!r}\n")
+			#sys.stderr.write(f"Could not connect to server: {self.address!r}\n")
+			sys.stderr.write("Could not connect to server: {!r}\n".format(self.address))
 			return
 		
 		# create map etc.
@@ -98,7 +100,8 @@ class Client():
 	
 	def save_log(self, filename):
 		with open(filename, "a") as f:
-			f.write(f"[[[ {int(time.time())} ]]]\n")
+			#f.write(f"[[[ {int(time.time())} ]]]\n")
+			f.write("[[[ {} ]]]\n".format(int(time.time())))
 			for msg in self.log_messages:
 				f.write(msg + "\n")
 	
@@ -156,7 +159,8 @@ class Client():
 		while True:
 			i = scr.get_wch()
 			self.handle_input(i)
-			self.log(f"K: {i!r}")
+			#self.log(f"K: {i!r}")
+			self.log("K: {!r}".format(i))
 	
 	def connection_thread(self):
 		try:
@@ -197,7 +201,8 @@ class Client():
 def main(argv):
 	if len(argv) == 1 or len(argv) > 4:
 		print("Usage:")
-		print(f"  {argv[0]} address [port [logfile]]")
+		#print(f"  {argv[0]} address [port [logfile]]")
+		print("  {} address [port [logfile]]".format(argv[0]))
 		print("  default port: 8000")
 		return
 	

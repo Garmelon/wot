@@ -103,7 +103,8 @@ class WotServer(WebSocket):
 			i = len(self.clients) - 1
 		
 		graphstr = "".join(["┯" if j == i else ("│" if v else " ") for j, v in enumerate(self.clients)])
-		print(f"{graphstr}  {self.address[0]}")
+		#print(f"{graphstr}  {self.address[0]}")
+		print("{}  {}".format(graphstr, self.address[0]))
 	
 	def handleClose(self):
 		i = self.clients.index(self)
@@ -119,7 +120,8 @@ class WotServer(WebSocket):
 def main(argv):
 	if len(argv) == 1 or len(argv) > 3:
 		print("Usage:")
-		print(f"  {argv[0]} dbfile [port]")
+		#print(f"  {argv[0]} dbfile [port]")
+		print("  {} dbfile [port]".format(argv[0]))
 		print("  default port: 8000")
 		return
 	
