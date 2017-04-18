@@ -65,27 +65,29 @@ class Client():
 		)
 		self.inputthread.start()
 		
-		# update screen until stopped
 		while not self.stopping:
-			self._drawevent.wait()
-			self._drawevent.clear()
-			
-			with self.map_ as m:
-				m.draw()
-				
-				if self.chunkmap_active:
-					self.chunkmap.draw()
-					curses.curs_set(False)
-				else:
-					curses.curs_set(True)
-			
-			#m.update_cursor()
-			#m.noutrefresh()
-			
-			curses.doupdate()
+			self.update_screen()
 		
 		if self.logfile:
 			self.save_log(self.logfile)
+	
+	def update_screen(self):
+		self._drawevent.wait()
+		self._drawevent.clear()
+		
+		with self.map_ as m:
+			m.draw()
+			
+			if self.chunkmap_active:
+				self.chunkmap.draw()
+				curses.curs_set(False)
+			else:
+				curses.curs_set(True)
+		
+		#m.update_cursor()
+		#m.noutrefresh()
+		
+		curses.doupdate()
 	
 	def redraw(self):
 		self._drawevent.set()
@@ -108,62 +110,64 @@ class Client():
 		elif mode == self.MOVE_MAP:
 			self.map_.scroll(x*20, y*10)
 	
+	def handle_input(self, i):
+		if   i == "\x1b": self.stop()
+		elif i == curses.KEY_F1: self.movement = self.MOVE_NORMAL
+		elif i == curses.KEY_F2: self.movement = self.MOVE_FAST
+		elif i == curses.KEY_F3: self.movement = self.MOVE_MAP
+		
+		elif i == curses.KEY_F5:
+			self.map_.redraw()
+		elif i == curses.KEY_F6 or i == curses.KEY_F4: # real map will later toggle on F4
+			self.chunkmap_active = not self.chunkmap_active
+			self.redraw()
+		elif i == curses.KEY_F7:
+			self.map_.alternating_colors = not self.map_.alternating_colors
+			self.redraw()
+		
+		# scrolling the map (10 vertical, 20 horizontal)
+		elif i in [569,566]: self.move( 0, -1, self.MOVE_MAP) # ctrl + up
+		elif i in [528,525]: self.move( 0,  1, self.MOVE_MAP)  # ctrl + down
+		elif i in [548,545]: self.move(-1,  0, self.MOVE_MAP) # ctrl + left
+		elif i in [563,560]: self.move( 1,  0, self.MOVE_MAP)  # ctrl + right
+		
+		# break here if chunkmap is shown: Don't allow for cursor movement or input
+		elif self.chunkmap_active and self.movement != self.MOVE_MAP: pass
+		
+		# quick cursor movement (5 vertical, 10 horizontal)
+		elif i == curses.KEY_SR:     self.move( 0, -1, self.MOVE_FAST)  # shift + up, 337
+		elif i == curses.KEY_SF:     self.move( 0,  1, self.MOVE_FAST)   # shift + down, 336
+		elif i == curses.KEY_SLEFT:  self.move(-1,  0, self.MOVE_FAST) # shift + left, 393
+		elif i == curses.KEY_SRIGHT: self.move( 1,  0, self.MOVE_FAST)  # shift + right, 402
+		# normal cursor movement
+		elif i == curses.KEY_UP:    self.move( 0, -1, self.movement)
+		elif i == curses.KEY_DOWN:  self.move( 0,  1, self.movement)
+		elif i == curses.KEY_LEFT:  self.move(-1,  0, self.movement)
+		elif i == curses.KEY_RIGHT: self.move( 1,  0, self.movement)
+		# edit world
+		elif i == "\x7f": self.map_.delete()
+		elif i == "\n":   self.map_.newline()
+		#elif i in string.digits + string.ascii_letters + string.punctuation + " ":
+			#self.map_.write(i)
+		elif isinstance(i, str) and len(i) == 1 and ord(i) > 31 and (i not in string.whitespace or i == " "):
+			self.map_.write(i)
+	
 	def input_thread(self, scr):
 		while True:
 			i = scr.get_wch()
-			
-			if   i == "\x1b": self.stop()
-			elif i == curses.KEY_F1: self.movement = self.MOVE_NORMAL
-			elif i == curses.KEY_F2: self.movement = self.MOVE_FAST
-			elif i == curses.KEY_F3: self.movement = self.MOVE_MAP
-			
-			elif i == curses.KEY_F5:
-				self.map_.redraw()
-			elif i == curses.KEY_F6 or i == curses.KEY_F4: # real map will later toggle on F4
-				self.chunkmap_active = not self.chunkmap_active
-				self.redraw()
-			elif i == curses.KEY_F7:
-				self.map_.alternating_colors = not self.map_.alternating_colors
-				self.redraw()
-			
-			# scrolling the map (10 vertical, 20 horizontal)
-			elif i in [569,566]: self.move( 0, -1, self.MOVE_MAP) # ctrl + up
-			elif i in [528,525]: self.move( 0,  1, self.MOVE_MAP)  # ctrl + down
-			elif i in [548,545]: self.move(-1,  0, self.MOVE_MAP) # ctrl + left
-			elif i in [563,560]: self.move( 1,  0, self.MOVE_MAP)  # ctrl + right
-			
-			# break here if chunkmap is shown: Don't allow for cursor movement or input
-			elif self.chunkmap_active and self.movement != self.MOVE_MAP: pass
-		
-			# quick cursor movement (5 vertical, 10 horizontal)
-			elif i == curses.KEY_SR:     self.move( 0, -1, self.MOVE_FAST)  # shift + up, 337
-			elif i == curses.KEY_SF:     self.move( 0,  1, self.MOVE_FAST)   # shift + down, 336
-			elif i == curses.KEY_SLEFT:  self.move(-1,  0, self.MOVE_FAST) # shift + left, 393
-			elif i == curses.KEY_SRIGHT: self.move( 1,  0, self.MOVE_FAST)  # shift + right, 402
-			# normal cursor movement
-			elif i == curses.KEY_UP:    self.move( 0, -1, self.movement)
-			elif i == curses.KEY_DOWN:  self.move( 0,  1, self.movement)
-			elif i == curses.KEY_LEFT:  self.move(-1,  0, self.movement)
-			elif i == curses.KEY_RIGHT: self.move( 1,  0, self.movement)
-			# edit world
-			elif i == "\x7f": self.map_.delete()
-			elif i == "\n":   self.map_.newline()
-			#elif i in string.digits + string.ascii_letters + string.punctuation + " ":
-				#self.map_.write(i)
-			elif isinstance(i, str) and len(i) == 1 and ord(i) > 31 and (i not in string.whitespace or i == " "):
-				self.map_.write(i)
-			
+			self.handle_input(i)
 			self.log(f"K: {i!r}")
 	
 	def connection_thread(self):
-		while True:
-			try:
+		try:
+			while True:
 				j = self._ws.recv()
 				if j:
 					self.handle_json(json.loads(j))
-			except (WSException, ConnectionResetError, OSError):
-				#self.stop()
-				return
+		except (WSException, ConnectionResetError, OSError):
+			self._ws = None
+			self.stop()
+			return
 	
 	def handle_json(self, message):
 		if message["type"] == "apply-changes":
@@ -172,7 +176,9 @@ class Client():
 	
 	def stop(self):
 		self.stopping = True
-		self._ws.close()
+		if self._ws:
+			self._ws.close()
+			self._ws = None
 		self.redraw()
 
 	def request_chunks(self, coords):
