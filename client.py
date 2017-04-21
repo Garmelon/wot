@@ -127,6 +127,7 @@ class Client():
 		elif i == curses.KEY_F7:
 			self.map_.alternating_colors = not self.map_.alternating_colors
 			self.redraw()
+		elif i == curses.KEY_F10: self.map_.set_cursor(0, 0)
 		
 		# scrolling the map (10 vertical, 20 horizontal)
 		elif i in [569,566]: self.move( 0, -1, self.MOVE_MAP) # ctrl + up
